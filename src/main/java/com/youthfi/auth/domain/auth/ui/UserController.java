@@ -1,2 +1,4 @@
-package com.youthfi.auth.domain.auth.ui;public class UserController {
+package com.youthfi.auth.domain.auth.ui;
+
+public class UserController {
 }
