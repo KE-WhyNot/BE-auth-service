@@ -51,6 +51,9 @@ public class VerifyEmailUseCase {
         } catch (IllegalArgumentException e) {
             log.warn("이메일 인증 실패: {}", e.getMessage());
             throw new RestApiException(EMAIL_INVALID_TOKEN);
+        } catch (RestApiException e) {
+            // 이미 RestApiException인 경우 그대로 던지기
+            throw e;
         } catch (Exception e) {
             log.error("이메일 인증 검증 중 오류: {}", e);
             throw new RestApiException(EMAIL_VERIFICATION_FAILED);
@@ -58,7 +61,12 @@ public class VerifyEmailUseCase {
     }
     
     private String extractEmailFromToken(String token) {
-        // TokenProvider를 통해 이메일 추출
-        return emailService.getEmailFromToken(token);
+        try {
+            // TokenProvider를 통해 이메일 추출
+            return emailService.getEmailFromToken(token);
+        } catch (Exception e) {
+            log.warn("토큰에서 이메일 추출 실패: {}", e.getMessage());
+            throw new RestApiException(EMAIL_INVALID_TOKEN);
+        }
     }
 }

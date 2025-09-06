@@ -1,10 +1,11 @@
 package com.youthfi.auth.global.exception.code;
 
-import lombok.Builder;
-import lombok.Getter;
+import java.util.Objects;
+
 import org.springframework.http.HttpStatus;
 
-import java.util.Objects;
+import lombok.Builder;
+import lombok.Getter;
 
 @Getter
 @Builder
@@ -25,6 +26,16 @@ public class BaseCode {
     @Override
     public int hashCode() {
         return Objects.hash(httpStatus, isSuccess, code, message);
+    }
+
+    @Override
+    public String toString() {
+        return "BaseCode{" +
+                "httpStatus=" + httpStatus +
+                ", isSuccess=" + isSuccess +
+                ", code='" + code + '\'' +
+                ", message='" + message + '\'' +
+                '}';
     }
 
 }
