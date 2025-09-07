@@ -291,7 +291,7 @@ class SignUpRequestTest {
 
         // then
         assertFalse(violations.isEmpty());
-        assertEquals(8, violations.size());
+        assertEquals(5, violations.size());
         assertTrue(violations.stream().anyMatch(v -> v.getPropertyPath().toString().equals("email")));
         assertTrue(violations.stream().anyMatch(v -> v.getPropertyPath().toString().equals("userId")));
         assertTrue(violations.stream().anyMatch(v -> v.getPropertyPath().toString().equals("password")));

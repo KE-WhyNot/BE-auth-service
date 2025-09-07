@@ -3,6 +3,7 @@ package com.youthfi.auth.global.swagger;
 import com.youthfi.auth.domain.auth.application.dto.request.UpdateProfileRequest;
 import com.youthfi.auth.domain.auth.application.dto.response.ProfileResponse;
 import com.youthfi.auth.global.common.BaseResponse;
+
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;

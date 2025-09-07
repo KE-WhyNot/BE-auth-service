@@ -101,10 +101,6 @@ class VerifyEmailUseCaseTest {
             verifyEmailUseCase.verifyEmail(validRequest);
         });
 
-        System.out.println("Expected: " + EmailErrorStatus.EMAIL_INVALID_TOKEN.getCode().toString());
-        System.out.println("Actual: " + exception.getErrorCode().toString());
-        System.out.println("Expected code: " + EmailErrorStatus.EMAIL_INVALID_TOKEN.getCode().getCode());
-        System.out.println("Actual code: " + exception.getErrorCode().getCode());
         assertEquals(EmailErrorStatus.EMAIL_INVALID_TOKEN.getCode(), exception.getErrorCode());
         verify(emailService, times(1)).verifySignupToken(VALID_TOKEN);
         verify(emailService, times(1)).getEmailFromToken(VALID_TOKEN);

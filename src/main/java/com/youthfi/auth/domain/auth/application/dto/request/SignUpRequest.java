@@ -12,11 +12,11 @@ public record SignUpRequest(
         String userId,
 
         @NotBlank(message = "비밀번호는 필수입니다.")
-        @NotBlank String password,
+        String password,
 
         @NotBlank(message = "이름은 필수입니다.")
-        @NotBlank String name,
+        String name,
 
         @NotBlank(message = "생년월일은 필수입니다.")
-        @NotBlank String birth
+        String birth
 ) {}
