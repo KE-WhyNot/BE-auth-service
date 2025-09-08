@@ -1,11 +1,14 @@
-package com.youthfi.auth.domain.auth.domain.service;
+package com.youthfi.auth.domain.auth.application.usecase;
 
 import java.time.Duration;
 
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import com.youthfi.auth.domain.auth.application.dto.response.TokenReissueResponse;
 import com.youthfi.auth.domain.auth.domain.entity.User;
+import com.youthfi.auth.domain.auth.domain.service.RefreshTokenService;
+import com.youthfi.auth.domain.auth.domain.service.UserService;
 import com.youthfi.auth.global.exception.RestApiException;
 import static com.youthfi.auth.global.exception.code.status.AuthErrorStatus.EXPIRED_MEMBER_JWT;
 import static com.youthfi.auth.global.exception.code.status.AuthErrorStatus.INVALID_REFRESH_TOKEN;
@@ -14,15 +17,15 @@ import com.youthfi.auth.global.security.TokenProvider;
 import lombok.RequiredArgsConstructor;
 
 @Service
+@Transactional
 @RequiredArgsConstructor
-public class TokenReissueService {
+public class TokenReissueUseCase {
 
     private final TokenProvider tokenProvider;
     private final RefreshTokenService refreshTokenService;
     private final UserService userService;
 
     public TokenReissueResponse reissue(String refreshToken, String userId) {
-
         // 존재 유무 검사
         if (!refreshTokenService.isExist(refreshToken, userId)) {
             throw new RestApiException(INVALID_REFRESH_TOKEN);
