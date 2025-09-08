@@ -19,13 +19,13 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 public interface EmailApi extends BaseApi {
 
     @Operation(
-            summary = "이메일 인증 링크 발송",
-            description = "회원가입용 이메일 인증 링크를 발송합니다. 쿨다운 및 일일 발송 제한이 적용됩니다."
+            summary = "이메일 인증 코드 발송",
+            description = "회원가입용 이메일 인증 6자리 코드를 발송합니다. 쿨다운 및 일일 발송 제한이 적용됩니다."
     )
     @ApiResponses(value = {
             @ApiResponse(
                     responseCode = "200",
-                    description = "인증 링크 발송 성공",
+                    description = "인증 코드 발송 성공",
                     content = @Content(schema = @Schema(implementation = BaseResponse.class))
             ),
             @ApiResponse(
@@ -47,8 +47,8 @@ public interface EmailApi extends BaseApi {
     BaseResponse<Void> sendVerification(SendVerificationRequest request);
 
     @Operation(
-            summary = "이메일 인증 검증",
-            description = "JWT 토큰을 사용하여 이메일 인증을 검증합니다. 토큰에서 이메일을 자동으로 추출하여 Redis에 인증 상태를 저장합니다."
+            summary = "이메일 인증 코드 검증",
+            description = "6자리 인증 코드를 사용하여 이메일 인증을 검증합니다. 코드는 5분간 유효하며, 최대 5회까지 시도할 수 있습니다."
     )
     @ApiResponses(value = {
             @ApiResponse(
@@ -58,7 +58,7 @@ public interface EmailApi extends BaseApi {
             ),
             @ApiResponse(
                     responseCode = "400",
-                    description = "유효하지 않은 토큰 또는 인증 실패",
+                    description = "유효하지 않은 인증 코드 또는 인증 실패",
                     content = @Content(schema = @Schema(implementation = BaseResponse.class))
             )
     })

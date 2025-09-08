@@ -42,14 +42,14 @@ class SendEmailVerificationUseCaseTest {
     @DisplayName("이메일 인증 발송 성공")
     void sendVerification_Success() {
         // given
-        doNothing().when(emailService).sendVerificationLink(anyString());
+        doNothing().when(emailService).sendVerificationCode(anyString());
 
         // when & then
         assertDoesNotThrow(() -> {
             sendEmailVerificationUseCase.sendVerification(validRequest);
         });
 
-        verify(emailService, times(1)).sendVerificationLink("test@example.com");
+        verify(emailService, times(1)).sendVerificationCode("test@example.com");
     }
 
     @Test
@@ -57,7 +57,7 @@ class SendEmailVerificationUseCaseTest {
     void sendVerification_CooldownActive_ThrowsException() {
         // given
         doThrow(new RuntimeException("이메일 발송 쿨다운 중입니다. 잠시 후 다시 시도해주세요."))
-                .when(emailService).sendVerificationLink(anyString());
+                .when(emailService).sendVerificationCode(anyString());
 
         // when & then
         RestApiException exception = assertThrows(RestApiException.class, () -> {
@@ -65,7 +65,7 @@ class SendEmailVerificationUseCaseTest {
         });
 
         assertEquals(EmailErrorStatus.EMAIL_COOLDOWN_ACTIVE.getCode(), exception.getErrorCode());
-        verify(emailService, times(1)).sendVerificationLink("test@example.com");
+        verify(emailService, times(1)).sendVerificationCode("test@example.com");
     }
 
     @Test
@@ -73,7 +73,7 @@ class SendEmailVerificationUseCaseTest {
     void sendVerification_DailyLimitExceeded_ThrowsException() {
         // given
         doThrow(new RuntimeException("일일 이메일 발송 횟수를 초과했습니다."))
-                .when(emailService).sendVerificationLink(anyString());
+                .when(emailService).sendVerificationCode(anyString());
 
         // when & then
         RestApiException exception = assertThrows(RestApiException.class, () -> {
@@ -81,7 +81,7 @@ class SendEmailVerificationUseCaseTest {
         });
 
         assertEquals(EmailErrorStatus.EMAIL_DAILY_LIMIT_EXCEEDED.getCode(), exception.getErrorCode());
-        verify(emailService, times(1)).sendVerificationLink("test@example.com");
+        verify(emailService, times(1)).sendVerificationCode("test@example.com");
     }
 
     @Test
@@ -89,7 +89,7 @@ class SendEmailVerificationUseCaseTest {
     void sendVerification_EmailSendFailed_ThrowsException() {
         // given
         doThrow(new RuntimeException("이메일 전송에 실패했습니다."))
-                .when(emailService).sendVerificationLink(anyString());
+                .when(emailService).sendVerificationCode(anyString());
 
         // when & then
         RestApiException exception = assertThrows(RestApiException.class, () -> {
@@ -97,7 +97,7 @@ class SendEmailVerificationUseCaseTest {
         });
 
         assertEquals(EmailErrorStatus.EMAIL_SEND_FAILED.getCode(), exception.getErrorCode());
-        verify(emailService, times(1)).sendVerificationLink("test@example.com");
+        verify(emailService, times(1)).sendVerificationCode("test@example.com");
     }
 
     @Test
@@ -105,7 +105,7 @@ class SendEmailVerificationUseCaseTest {
     void sendVerification_OtherException_ThrowsException() {
         // given
         doThrow(new IllegalArgumentException("알 수 없는 오류"))
-                .when(emailService).sendVerificationLink(anyString());
+                .when(emailService).sendVerificationCode(anyString());
 
         // when & then
         RestApiException exception = assertThrows(RestApiException.class, () -> {
@@ -113,7 +113,7 @@ class SendEmailVerificationUseCaseTest {
         });
 
         assertEquals(EmailErrorStatus.EMAIL_SEND_FAILED.getCode(), exception.getErrorCode());
-        verify(emailService, times(1)).sendVerificationLink("test@example.com");
+        verify(emailService, times(1)).sendVerificationCode("test@example.com");
     }
 
     @Test
@@ -126,7 +126,7 @@ class SendEmailVerificationUseCaseTest {
                 "admin@youthfi.com"
         };
 
-        doNothing().when(emailService).sendVerificationLink(anyString());
+        doNothing().when(emailService).sendVerificationCode(anyString());
 
         // when & then
         for (String email : testEmails) {
@@ -137,6 +137,6 @@ class SendEmailVerificationUseCaseTest {
             });
         }
 
-        verify(emailService, times(testEmails.length)).sendVerificationLink(anyString());
+        verify(emailService, times(testEmails.length)).sendVerificationCode(anyString());
     }
 }

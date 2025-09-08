@@ -41,21 +41,20 @@ class VerifyEmailUseCaseTest {
     private VerifyEmailUseCase verifyEmailUseCase;
 
     private VerifyEmailRequest validRequest;
-    private final String VALID_TOKEN = "valid.jwt.token";
     private final String VALID_EMAIL = "test@example.com";
+    private final String VALID_CODE = "123456";
     private final long VERIFICATION_TTL_SECONDS = 1800L;
 
     @BeforeEach
     void setUp() {
-        validRequest = new VerifyEmailRequest(VALID_TOKEN);
+        validRequest = new VerifyEmailRequest(VALID_EMAIL, VALID_CODE);
     }
 
     @Test
     @DisplayName("이메일 인증 검증 성공")
     void verifyEmail_Success() {
         // given
-        when(emailService.verifySignupToken(VALID_TOKEN)).thenReturn(true);
-        when(emailService.getEmailFromToken(VALID_TOKEN)).thenReturn(VALID_EMAIL);
+        when(emailService.verifySignupCode(VALID_EMAIL, VALID_CODE)).thenReturn(true);
         doNothing().when(emailVerificationService).markEmailAsVerified(anyString(), anyLong());
 
         // when
@@ -66,17 +65,16 @@ class VerifyEmailUseCaseTest {
         assertTrue(response.verified());
         assertEquals(VERIFICATION_TTL_SECONDS, response.expiresInSec());
 
-        verify(emailService, times(1)).verifySignupToken(VALID_TOKEN);
-        verify(emailService, times(1)).getEmailFromToken(VALID_TOKEN);
+        verify(emailService, times(1)).verifySignupCode(VALID_EMAIL, VALID_CODE);
         verify(emailVerificationService, times(1)).markEmailAsVerified(VALID_EMAIL, VERIFICATION_TTL_SECONDS);
     }
 
     @Test
-    @DisplayName("JWT 토큰 검증 실패 시 EMAIL_INVALID_TOKEN 예외 발생")
-    void verifyEmail_InvalidToken_ThrowsException() {
+    @DisplayName("인증 코드 검증 실패 시 EMAIL_INVALID_TOKEN 예외 발생")
+    void verifyEmail_InvalidCode_ThrowsException() {
         // given
-        when(emailService.verifySignupToken(VALID_TOKEN))
-                .thenThrow(new IllegalArgumentException("유효하지 않은 인증 토큰입니다."));
+        when(emailService.verifySignupCode(VALID_EMAIL, VALID_CODE))
+                .thenThrow(new IllegalArgumentException("유효하지 않은 인증 코드입니다."));
 
         // when & then
         RestApiException exception = assertThrows(RestApiException.class, () -> {
@@ -84,17 +82,15 @@ class VerifyEmailUseCaseTest {
         });
 
         assertEquals(EmailErrorStatus.EMAIL_INVALID_TOKEN.getCode(), exception.getErrorCode());
-        verify(emailService, times(1)).verifySignupToken(VALID_TOKEN);
-        verify(emailService, never()).getEmailFromToken(anyString());
+        verify(emailService, times(1)).verifySignupCode(VALID_EMAIL, VALID_CODE);
         verify(emailVerificationService, never()).markEmailAsVerified(anyString(), anyLong());
     }
 
     @Test
-    @DisplayName("토큰에서 이메일 추출 실패 시 EMAIL_INVALID_TOKEN 예외 발생")
-    void verifyEmail_EmailExtractionFailed_ThrowsException() {
+    @DisplayName("인증 코드가 false 반환 시 EMAIL_INVALID_TOKEN 예외 발생")
+    void verifyEmail_CodeValidationFailed_ThrowsException() {
         // given
-        when(emailService.verifySignupToken(VALID_TOKEN)).thenReturn(true);
-        when(emailService.getEmailFromToken(VALID_TOKEN)).thenThrow(new RuntimeException("토큰에서 이메일 추출 실패"));
+        when(emailService.verifySignupCode(VALID_EMAIL, VALID_CODE)).thenReturn(false);
 
         // when & then
         RestApiException exception = assertThrows(RestApiException.class, () -> {
@@ -102,8 +98,7 @@ class VerifyEmailUseCaseTest {
         });
 
         assertEquals(EmailErrorStatus.EMAIL_INVALID_TOKEN.getCode(), exception.getErrorCode());
-        verify(emailService, times(1)).verifySignupToken(VALID_TOKEN);
-        verify(emailService, times(1)).getEmailFromToken(VALID_TOKEN);
+        verify(emailService, times(1)).verifySignupCode(VALID_EMAIL, VALID_CODE);
         verify(emailVerificationService, never()).markEmailAsVerified(anyString(), anyLong());
     }
 
@@ -111,8 +106,7 @@ class VerifyEmailUseCaseTest {
     @DisplayName("이메일 인증 상태 저장 실패 시 EMAIL_VERIFICATION_FAILED 예외 발생")
     void verifyEmail_VerificationServiceFailed_ThrowsException() {
         // given
-        when(emailService.verifySignupToken(VALID_TOKEN)).thenReturn(true);
-        when(emailService.getEmailFromToken(VALID_TOKEN)).thenReturn(VALID_EMAIL);
+        when(emailService.verifySignupCode(VALID_EMAIL, VALID_CODE)).thenReturn(true);
         doThrow(new RuntimeException("Redis 저장 실패"))
                 .when(emailVerificationService).markEmailAsVerified(anyString(), anyLong());
 
@@ -122,8 +116,7 @@ class VerifyEmailUseCaseTest {
         });
 
         assertEquals(EmailErrorStatus.EMAIL_VERIFICATION_FAILED.getCode(), exception.getErrorCode());
-        verify(emailService, times(1)).verifySignupToken(VALID_TOKEN);
-        verify(emailService, times(1)).getEmailFromToken(VALID_TOKEN);
+        verify(emailService, times(1)).verifySignupCode(VALID_EMAIL, VALID_CODE);
         verify(emailVerificationService, times(1)).markEmailAsVerified(VALID_EMAIL, VERIFICATION_TTL_SECONDS);
     }
 
@@ -131,7 +124,7 @@ class VerifyEmailUseCaseTest {
     @DisplayName("기타 예외 발생 시 EMAIL_VERIFICATION_FAILED 예외 발생")
     void verifyEmail_OtherException_ThrowsException() {
         // given
-        when(emailService.verifySignupToken(VALID_TOKEN))
+        when(emailService.verifySignupCode(VALID_EMAIL, VALID_CODE))
                 .thenThrow(new RuntimeException("알 수 없는 오류"));
 
         // when & then
@@ -140,28 +133,23 @@ class VerifyEmailUseCaseTest {
         });
 
         assertEquals(EmailErrorStatus.EMAIL_VERIFICATION_FAILED.getCode(), exception.getErrorCode());
-        verify(emailService, times(1)).verifySignupToken(VALID_TOKEN);
-        verify(emailService, never()).getEmailFromToken(anyString());
+        verify(emailService, times(1)).verifySignupCode(VALID_EMAIL, VALID_CODE);
         verify(emailVerificationService, never()).markEmailAsVerified(anyString(), anyLong());
     }
 
     @Test
-    @DisplayName("다양한 토큰으로 테스트")
-    void verifyEmail_DifferentTokens() {
+    @DisplayName("다양한 인증 코드로 테스트")
+    void verifyEmail_DifferentCodes() {
         // given
-        String[] testTokens = {
-                "token1.jwt.signature",
-                "token2.jwt.signature",
-                "token3.jwt.signature"
-        };
+        String[] testCodes = {"123456", "654321", "789012"};
+        String[] testEmails = {"test1@example.com", "test2@example.com", "test3@example.com"};
 
-        when(emailService.verifySignupToken(anyString())).thenReturn(true);
-        when(emailService.getEmailFromToken(anyString())).thenReturn(VALID_EMAIL);
+        when(emailService.verifySignupCode(anyString(), anyString())).thenReturn(true);
         doNothing().when(emailVerificationService).markEmailAsVerified(anyString(), anyLong());
 
         // when & then
-        for (String token : testTokens) {
-            VerifyEmailRequest request = new VerifyEmailRequest(token);
+        for (int i = 0; i < testCodes.length; i++) {
+            VerifyEmailRequest request = new VerifyEmailRequest(testEmails[i], testCodes[i]);
             
             EmailVerificationResponse response = verifyEmailUseCase.verifyEmail(request);
             
@@ -170,32 +158,31 @@ class VerifyEmailUseCaseTest {
             assertEquals(VERIFICATION_TTL_SECONDS, response.expiresInSec());
         }
 
-        verify(emailService, times(testTokens.length)).verifySignupToken(anyString());
-        verify(emailService, times(testTokens.length)).getEmailFromToken(anyString());
-        verify(emailVerificationService, times(testTokens.length)).markEmailAsVerified(anyString(), anyLong());
+        verify(emailService, times(testCodes.length)).verifySignupCode(anyString(), anyString());
+        verify(emailVerificationService, times(testCodes.length)).markEmailAsVerified(anyString(), anyLong());
     }
 
     @Test
-    @DisplayName("빈 토큰으로 테스트")
-    void verifyEmail_EmptyToken() {
+    @DisplayName("빈 이메일로 테스트")
+    void verifyEmail_EmptyEmail() {
         // given
-        VerifyEmailRequest emptyTokenRequest = new VerifyEmailRequest("");
+        VerifyEmailRequest emptyEmailRequest = new VerifyEmailRequest("", VALID_CODE);
 
         // when & then
         assertThrows(Exception.class, () -> {
-            verifyEmailUseCase.verifyEmail(emptyTokenRequest);
+            verifyEmailUseCase.verifyEmail(emptyEmailRequest);
         });
     }
 
     @Test
-    @DisplayName("null 토큰으로 테스트")
-    void verifyEmail_NullToken() {
+    @DisplayName("빈 인증 코드로 테스트")
+    void verifyEmail_EmptyCode() {
         // given
-        VerifyEmailRequest nullTokenRequest = new VerifyEmailRequest(null);
+        VerifyEmailRequest emptyCodeRequest = new VerifyEmailRequest(VALID_EMAIL, "");
 
         // when & then
         assertThrows(Exception.class, () -> {
-            verifyEmailUseCase.verifyEmail(nullTokenRequest);
+            verifyEmailUseCase.verifyEmail(emptyCodeRequest);
         });
     }
 }

@@ -28,7 +28,7 @@ public class SendEmailVerificationUseCase {
         
         try {
             // 이메일 발송 (Rate Limiting 포함)
-            emailService.sendVerificationLink(email);
+            emailService.sendVerificationCode(email);
             log.info("이메일 인증 발송 완료: {}", email);
         } catch (RuntimeException e) {
             log.error("이메일 인증 발송 실패: {} - {}", email, e.getMessage());

@@ -25,12 +25,11 @@ public class EmailService {
     private final JavaMailSender mailSender;
     private final RedisTemplate<String, String> redisTemplate;
     private final TokenProvider tokenProvider;
+    private final EmailVerificationService emailVerificationService;
 
     @Value("${email.from}")
     private String fromEmail;
 
-    @Value("${app.client.url}")
-    private String clientUrl;
 
     // Redis 키 접두사
     private final static String COOLDOWN_PREFIX = "EMAIL_COOLDOWN:";
@@ -41,16 +40,12 @@ public class EmailService {
     private static final int MAX_DAILY_ATTEMPTS = 5;
     private static final long COOLDOWN_SECONDS = 60;
 
-    // JWT 토큰 생성 (기존 TokenProvider 사용)
-    private String createToken(String email, String type) {
-        return tokenProvider.createEmailVerificationToken(email, type);
-    }
 
     /**
-     * 회원가입용 이메일 인증 링크 발송
+     * 회원가입용 이메일 인증 코드 발송
      * @param email 인증할 이메일 주소
      */
-    public void sendVerificationLink(String email) {
+    public void sendVerificationCode(String email) {
         // 쿨다운 확인
         if (isInCooldown(email)) {
             log.warn("이메일 발송 쿨다운 중: {}", email);
@@ -63,8 +58,9 @@ public class EmailService {
             throw new RuntimeException("일일 이메일 발송 횟수를 초과했습니다.");
         }
 
-        String token = createToken(email, "signup");
-        String link = clientUrl + "/signup?verifyToken=" + token;
+        // 6자리 인증 코드 생성 및 저장
+        String verificationCode = emailVerificationService.generateVerificationCode();
+        emailVerificationService.saveVerificationCode(email, verificationCode);
 
         String subject = "[YouthFi] 회원가입 이메일 인증";
         String html = ""
@@ -73,13 +69,13 @@ public class EmailService {
                 + "    <h1 style=\"margin:0;font-size:24px;color:#0064FF;\">YouthFi</h1>"
                 + "  </div>"
                 + "  <p style=\"font-size:16px;\">안녕하세요!</p>"
-                + "  <p style=\"font-size:16px;\">회원가입 인증을 위해 아래 버튼을 클릭해주세요.</p>"
-                + "  <div style=\"background:#f5f5f5;padding:15px;text-align:center;margin:20px 0;\">"
-                + "    <a href=\"" + link + "\" style=\"display:inline-block;padding:12px 24px;background:#0064FF;color:#fff;text-decoration:none;border-radius:4px;\">"
-                + "      이메일 인증하기"
-                + "    </a>"
+                + "  <p style=\"font-size:16px;\">회원가입 인증을 위해 아래 인증 코드를 입력해주세요.</p>"
+                + "  <div style=\"background:#f5f5f5;padding:20px;text-align:center;margin:20px 0;border-radius:8px;\">"
+                + "    <div style=\"font-size:32px;font-weight:bold;color:#0064FF;letter-spacing:4px;margin:10px 0;\">"
+                + verificationCode
+                + "    </div>"
                 + "  </div>"
-                + "  <p style=\"font-size:14px;color:#888;\">이 링크는 15분 후 만료됩니다.</p>"
+                + "  <p style=\"font-size:14px;color:#888;\">이 인증 코드는 5분 후 만료됩니다.</p>"
                 + "  <p style=\"font-size:14px;\">요청하지 않으셨다면 고객지원으로 문의해주세요.</p>"
                 + "  <hr style=\"border:none;border-top:1px solid #eee;margin:30px 0;\"/>"
                 + "  <div style=\"font-size:12px;color:#aaa;text-align:center;\">YouthFi Inc, Seoul, Korea</div>"
@@ -95,7 +91,21 @@ public class EmailService {
     }
 
     /**
-     * 회원가입용 JWT 토큰 검증
+     * 회원가입용 이메일 인증 코드 검증
+     * @param email 이메일 주소
+     * @param code 인증 코드
+     * @return 검증 성공 여부
+     */
+    public boolean verifySignupCode(String email, String code) {
+        try {
+            return emailVerificationService.verifyCode(email, code);
+        } catch (Exception ex) {
+            throw new IllegalArgumentException("인증 코드가 만료되었거나 유효하지 않습니다.");
+        }
+    }
+
+    /**
+     * 회원가입용 JWT 토큰 검증 (기존 호환성 유지)
      * @param token 검증할 JWT 토큰
      * @return 검증 성공 여부
      */
@@ -111,44 +121,6 @@ public class EmailService {
         }
     }
 
-    /**
-     * 비밀번호 재설정용 이메일 링크 발송
-     * @param email 인증할 이메일 주소
-     */
-    public void sendPasswordResetLink(String email) {
-        String token = createToken(email, "reset");
-        String link = clientUrl + "/password-change?verifyToken=" + token;
-
-        String subject = "[YouthFi] 비밀번호 재설정 이메일";
-        String html = ""
-                + "<div style=\"font-family:Arial,sans-serif;color:#333;padding:20px;max-width:600px;margin:auto;\">"
-                + "  <div style=\"text-align:center;margin-bottom:20px;\">"
-                + "    <h1 style=\"margin:0;font-size:24px;color:#E74C3C;\">YouthFi</h1>"
-                + "  </div>"
-                + "  <p style=\"font-size:16px;\">비밀번호 재설정을 요청하셨습니다.</p>"
-                + "  <p style=\"font-size:16px;\">아래 버튼을 클릭하여 비밀번호를 변경해주세요.</p>"
-                + "  <div style=\"background:#f5f5f5;padding:15px;text-align:center;margin:20px 0;\">"
-                + "    <a href=\"" + link + "\" style=\"display:inline-block;padding:12px 24px;background:#E74C3C;color:#fff;text-decoration:none;border-radius:4px;\">"
-                + "      비밀번호 재설정하기"
-                + "    </a>"
-                + "  </div>"
-                + "  <p style=\"font-size:14px;color:#888;\">이 링크는 15분 후 만료됩니다.</p>"
-                + "  <p style=\"font-size:14px;\">요청하지 않으셨다면 고객지원으로 문의해주세요.</p>"
-                + "  <hr style=\"border:none;border-top:1px solid #eee;margin:30px 0;\"/>"
-                + "  <div style=\"font-size:12px;color:#aaa;text-align:center;\">YouthFi Inc, Seoul, Korea</div>"
-                + "</div>";
-
-        sendHtmlMail(email, subject, html);
-    }
-
-    /**
-     * 비밀번호 재설정용 JWT 토큰 검증
-     * @param token 검증할 JWT 토큰
-     * @return 검증 성공 여부
-     */
-    public boolean verifyPasswordResetToken(String token) {
-        return tokenProvider.validateEmailVerificationToken(token, "reset");
-    }
 
     /**
      * JWT 토큰에서 이메일 추출
