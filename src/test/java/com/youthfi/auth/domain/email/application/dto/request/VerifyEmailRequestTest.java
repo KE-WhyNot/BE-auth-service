@@ -9,8 +9,6 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.ValueSource;
 
 import jakarta.validation.ConstraintViolation;
 import jakarta.validation.Validation;
@@ -24,139 +22,146 @@ class VerifyEmailRequestTest {
     private final Validator validator = factory.getValidator();
 
     @Test
-    @DisplayName("유효한 토큰으로 생성 성공")
-    void createWithValidToken_Success() {
+    @DisplayName("유효한 이메일과 인증 코드로 생성 성공")
+    void createWithValidEmailAndCode_Success() {
         // given
-        String validToken = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJFbWFpbFZlcmlmaWNhdGlvbiIsImlhdCI6MTYzMzQ1Njc4OSwiZXhwIjoxNjMzNDU3Nzg5LCJpZCI6InRlc3RAZXhhbXBsZS5jb20iLCJ0eXBlIjoic2lnbnVwIn0.signature";
+        String validEmail = "test@example.com";
+        String validCode = "123456";
 
         // when
-        VerifyEmailRequest request = new VerifyEmailRequest(validToken);
+        VerifyEmailRequest request = new VerifyEmailRequest(validEmail, validCode);
 
         // then
         assertNotNull(request);
-        assertEquals(validToken, request.verifyToken());
+        assertEquals(validEmail, request.email());
+        assertEquals(validCode, request.verificationCode());
     }
 
     @Test
-    @DisplayName("다양한 유효한 토큰 형식 테스트")
-    void createWithVariousValidTokens_Success() {
+    @DisplayName("다양한 유효한 이메일과 인증 코드 형식 테스트")
+    void createWithVariousValidEmailsAndCodes_Success() {
         // given
-        String[] validTokens = {
-                "simple.token",
-                "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJFbWFpbFZlcmlmaWNhdGlvbiJ9.signature",
-                "header.payload.signature",
-                "a.b.c",
-                "very.long.token.with.many.parts.and.dots"
+        String[] validEmails = {
+                "test@example.com",
+                "user@domain.co.kr",
+                "admin@youthfi.com"
         };
+        String[] validCodes = {"123456", "654321", "789012"};
 
         // when & then
-        for (String token : validTokens) {
-            VerifyEmailRequest request = new VerifyEmailRequest(token);
+        for (int i = 0; i < validEmails.length; i++) {
+            VerifyEmailRequest request = new VerifyEmailRequest(validEmails[i], validCodes[i]);
             assertNotNull(request);
-            assertEquals(token, request.verifyToken());
+            assertEquals(validEmails[i], request.email());
+            assertEquals(validCodes[i], request.verificationCode());
         }
     }
 
     @Test
-    @DisplayName("빈 문자열 토큰으로 생성 시 검증 실패")
-    void createWithEmptyToken_ValidationFails() {
+    @DisplayName("빈 문자열 이메일로 생성 시 검증 실패")
+    void createWithEmptyEmail_ValidationFails() {
         // given
-        String emptyToken = "";
+        String emptyEmail = "";
+        String validCode = "123456";
 
         // when
-        VerifyEmailRequest request = new VerifyEmailRequest(emptyToken);
+        VerifyEmailRequest request = new VerifyEmailRequest(emptyEmail, validCode);
         Set<ConstraintViolation<VerifyEmailRequest>> violations = validator.validate(request);
 
         // then
         assertFalse(violations.isEmpty());
-        assertTrue(violations.stream().anyMatch(v -> v.getMessage().contains("인증 토큰은 필수입니다")));
+        assertTrue(violations.stream().anyMatch(v -> v.getMessage().contains("이메일은 필수입니다")));
     }
 
     @Test
-    @DisplayName("null 토큰으로 생성 시 검증 실패")
-    void createWithNullToken_ValidationFails() {
+    @DisplayName("null 이메일로 생성 시 검증 실패")
+    void createWithNullEmail_ValidationFails() {
         // given
-        String nullToken = null;
+        String nullEmail = null;
+        String validCode = "123456";
 
         // when
-        VerifyEmailRequest request = new VerifyEmailRequest(nullToken);
+        VerifyEmailRequest request = new VerifyEmailRequest(nullEmail, validCode);
         Set<ConstraintViolation<VerifyEmailRequest>> violations = validator.validate(request);
 
         // then
         assertFalse(violations.isEmpty());
-        assertTrue(violations.stream().anyMatch(v -> v.getMessage().contains("인증 토큰은 필수입니다")));
+        assertTrue(violations.stream().anyMatch(v -> v.getMessage().contains("이메일은 필수입니다")));
     }
 
     @Test
-    @DisplayName("공백만 있는 토큰으로 생성 시 검증 실패")
-    void createWithWhitespaceOnlyToken_ValidationFails() {
+    @DisplayName("빈 문자열 인증 코드로 생성 시 검증 실패")
+    void createWithEmptyCode_ValidationFails() {
         // given
-        String whitespaceToken = "   ";
+        String validEmail = "test@example.com";
+        String emptyCode = "";
 
         // when
-        VerifyEmailRequest request = new VerifyEmailRequest(whitespaceToken);
+        VerifyEmailRequest request = new VerifyEmailRequest(validEmail, emptyCode);
         Set<ConstraintViolation<VerifyEmailRequest>> violations = validator.validate(request);
 
         // then
         assertFalse(violations.isEmpty());
-        assertTrue(violations.stream().anyMatch(v -> v.getMessage().contains("인증 토큰은 필수입니다")));
+        assertTrue(violations.stream().anyMatch(v -> v.getMessage().contains("인증 코드는 필수입니다")));
     }
 
-    @ParameterizedTest
-    @ValueSource(strings = {
-            "   ",
-            "\t",
-            "\n",
-            "\r\n",
-            " \t \n \r "
-    })
-    @DisplayName("다양한 공백 문자로만 구성된 토큰으로 생성 시 검증 실패")
-    void createWithVariousWhitespaceTokens_ValidationFails(String whitespaceToken) {
+    @Test
+    @DisplayName("잘못된 이메일 형식으로 생성 시 검증 실패")
+    void createWithInvalidEmailFormat_ValidationFails() {
+        // given
+        String invalidEmail = "invalid-email";
+        String validCode = "123456";
+
         // when
-        VerifyEmailRequest request = new VerifyEmailRequest(whitespaceToken);
+        VerifyEmailRequest request = new VerifyEmailRequest(invalidEmail, validCode);
         Set<ConstraintViolation<VerifyEmailRequest>> violations = validator.validate(request);
 
         // then
         assertFalse(violations.isEmpty());
-        assertTrue(violations.stream().anyMatch(v -> v.getMessage().contains("인증 토큰은 필수입니다")));
+        assertTrue(violations.stream().anyMatch(v -> v.getMessage().contains("올바른 이메일 형식이 아닙니다")));
     }
 
     @Test
-    @DisplayName("매우 긴 토큰으로 생성 시 성공 (길이 제한 없음)")
-    void createWithVeryLongToken_Success() {
+    @DisplayName("6자리가 아닌 인증 코드로 생성 시 검증 실패")
+    void createWithInvalidCodeLength_ValidationFails() {
         // given
-        String longToken = "a".repeat(1000) + "." + "b".repeat(1000) + "." + "c".repeat(1000);
+        String validEmail = "test@example.com";
+        String invalidCode = "12345"; // 5자리
 
         // when
-        VerifyEmailRequest request = new VerifyEmailRequest(longToken);
+        VerifyEmailRequest request = new VerifyEmailRequest(validEmail, invalidCode);
+        Set<ConstraintViolation<VerifyEmailRequest>> violations = validator.validate(request);
 
         // then
-        assertNotNull(request);
-        assertEquals(longToken, request.verifyToken());
+        assertFalse(violations.isEmpty());
+        assertTrue(violations.stream().anyMatch(v -> v.getMessage().contains("인증 코드는 6자리 숫자여야 합니다")));
     }
 
     @Test
-    @DisplayName("특수 문자가 포함된 토큰으로 생성 시 성공")
-    void createWithSpecialCharactersToken_Success() {
+    @DisplayName("숫자가 아닌 인증 코드로 생성 시 검증 실패")
+    void createWithNonNumericCode_ValidationFails() {
         // given
-        String specialToken = "token+with-special_chars.and@symbols#and$more";
+        String validEmail = "test@example.com";
+        String invalidCode = "abc123"; // 숫자가 아닌 문자 포함
 
         // when
-        VerifyEmailRequest request = new VerifyEmailRequest(specialToken);
+        VerifyEmailRequest request = new VerifyEmailRequest(validEmail, invalidCode);
+        Set<ConstraintViolation<VerifyEmailRequest>> violations = validator.validate(request);
 
         // then
-        assertNotNull(request);
-        assertEquals(specialToken, request.verifyToken());
+        assertFalse(violations.isEmpty());
+        assertTrue(violations.stream().anyMatch(v -> v.getMessage().contains("인증 코드는 6자리 숫자여야 합니다")));
     }
 
     @Test
     @DisplayName("Record equals 및 hashCode 테스트")
     void recordEqualsAndHashCode() {
         // given
-        String token = "test.token";
-        VerifyEmailRequest request1 = new VerifyEmailRequest(token);
-        VerifyEmailRequest request2 = new VerifyEmailRequest(token);
-        VerifyEmailRequest request3 = new VerifyEmailRequest("different.token");
+        String email = "test@example.com";
+        String code = "123456";
+        VerifyEmailRequest request1 = new VerifyEmailRequest(email, code);
+        VerifyEmailRequest request2 = new VerifyEmailRequest(email, code);
+        VerifyEmailRequest request3 = new VerifyEmailRequest("different@example.com", code);
 
         // when & then
         assertEquals(request1, request2);
@@ -169,28 +174,32 @@ class VerifyEmailRequestTest {
     @DisplayName("Record toString 테스트")
     void recordToString() {
         // given
-        String token = "test.token";
-        VerifyEmailRequest request = new VerifyEmailRequest(token);
+        String email = "test@example.com";
+        String code = "123456";
+        VerifyEmailRequest request = new VerifyEmailRequest(email, code);
 
         // when
         String toString = request.toString();
 
         // then
         assertNotNull(toString);
-        assertTrue(toString.contains(token));
+        assertTrue(toString.contains(email));
+        assertTrue(toString.contains(code));
     }
 
     @Test
-    @DisplayName("JWT 형식 토큰으로 생성 시 성공")
-    void createWithJWTFormatToken_Success() {
+    @DisplayName("유효한 6자리 인증 코드로 생성 시 성공")
+    void createWithValidSixDigitCode_Success() {
         // given
-        String jwtToken = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJFbWFpbFZlcmlmaWNhdGlvbiIsImlhdCI6MTYzMzQ1Njc4OSwiZXhwIjoxNjMzNDU3Nzg5LCJpZCI6InRlc3RAZXhhbXBsZS5jb20iLCJ0eXBlIjoic2lnbnVwIn0.signature";
+        String validEmail = "test@example.com";
+        String validCode = "123456";
 
         // when
-        VerifyEmailRequest request = new VerifyEmailRequest(jwtToken);
+        VerifyEmailRequest request = new VerifyEmailRequest(validEmail, validCode);
 
         // then
         assertNotNull(request);
-        assertEquals(jwtToken, request.verifyToken());
+        assertEquals(validEmail, request.email());
+        assertEquals(validCode, request.verificationCode());
     }
 }

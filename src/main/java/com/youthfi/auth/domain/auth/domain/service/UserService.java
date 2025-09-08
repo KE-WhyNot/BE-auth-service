@@ -1,16 +1,16 @@
 package com.youthfi.auth.domain.auth.domain.service;
 
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.stereotype.Service;
+
 import com.youthfi.auth.domain.auth.application.dto.request.SignUpRequest;
 import com.youthfi.auth.domain.auth.application.dto.response.ProfileResponse;
 import com.youthfi.auth.domain.auth.domain.entity.User;
 import com.youthfi.auth.domain.auth.domain.repository.UserRepository;
 import com.youthfi.auth.global.exception.RestApiException;
-import lombok.RequiredArgsConstructor;
-import org.springframework.security.crypto.password.PasswordEncoder;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-
 import static com.youthfi.auth.global.exception.code.status.GlobalErrorStatus._NOT_FOUND;
+
+import lombok.RequiredArgsConstructor;
 
 @Service
 @RequiredArgsConstructor
@@ -37,7 +37,6 @@ public class UserService {
         return userRepository.existsByUserId(userId);
     }
 
-    @Transactional
     public User save(SignUpRequest request) {
         User user = User.builder()
                 .userId(request.userId())

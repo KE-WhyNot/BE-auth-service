@@ -27,17 +27,16 @@ public class VerifyEmailUseCase {
     private static final long VERIFICATION_TTL_SECONDS = 1800;
 
     public EmailVerificationResponse verifyEmail(VerifyEmailRequest request) {
-        String token = request.verifyToken();
+        String email = request.email();
+        String verificationCode = request.verificationCode();
         
-        log.info("이메일 인증 검증 요청");
+        log.info("이메일 인증 검증 요청: {}", email);
         
         try {
-            // JWT 토큰 검증
-            emailService.verifySignupToken(token);
+            // 6자리 인증 코드 검증
+            boolean isValid = emailService.verifySignupCode(email, verificationCode);
             
-            // 토큰에서 이메일 추출 (토큰 검증 후에 이메일을 추출)
-            String email = extractEmailFromToken(token);
-            if (email == null) {
+            if (!isValid) {
                 throw new RestApiException(EMAIL_INVALID_TOKEN);
             }
             
@@ -57,16 +56,6 @@ public class VerifyEmailUseCase {
         } catch (Exception e) {
             log.error("이메일 인증 검증 중 오류: {}", e);
             throw new RestApiException(EMAIL_VERIFICATION_FAILED);
-        }
-    }
-    
-    private String extractEmailFromToken(String token) {
-        try {
-            // TokenProvider를 통해 이메일 추출
-            return emailService.getEmailFromToken(token);
-        } catch (Exception e) {
-            log.warn("토큰에서 이메일 추출 실패: {}", e.getMessage());
-            throw new RestApiException(EMAIL_INVALID_TOKEN);
         }
     }
 }
