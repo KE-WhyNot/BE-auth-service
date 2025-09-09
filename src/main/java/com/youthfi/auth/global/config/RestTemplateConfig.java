@@ -18,8 +18,6 @@ public class RestTemplateConfig {
         factory.setReadTimeout(10000);
 
         return builder
-                .setConnectTimeout(Duration.ofMillis(5000))
-                .setReadTimeout(Duration.ofMillis(10000))
                 .requestFactory(() -> factory)
                 .build();
     }
