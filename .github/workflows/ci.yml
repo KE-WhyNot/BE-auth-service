@@ -20,91 +20,80 @@ env:
 jobs:
   build-test:
     runs-on: ubuntu-latest
-    env:
-      SPRING_PROFILES_ACTIVE: ci   # ➜ application-ci.yml + include:test 적용
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-java@v4
-        with:
-          distribution: temurin
-          java-version: '17'
-          cache: gradle
-      - run: |
-          chmod +x ./gradlew || true
-          ./gradlew clean build --no-daemon --stacktrace
     timeout-minutes: 30
+    env:
+      SPRING_PROFILES_ACTIVE: ci
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Set up JDK 17 (Temurin)
+      # --- JDK 17 + Gradle 캐시 ---
+      - name: Set up JDK 17 (Gradle)
+        if: ${{ hashFiles('**/build.gradle','**/build.gradle.kts') != '' }}
         uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: '17'
-          cache: | 
-            ${{ hashFiles('**/build.gradle','**/build.gradle.kts') != '' && 'gradle' || '' }}
-            ${{ hashFiles('**/pom.xml') != '' && 'maven' || '' }}
+          cache: gradle
 
-      # --- Spring Boot 3.5.5 일관성 확인 (Gradle/Maven) ---
+      # --- JDK 17 + Maven 캐시 ---
+      - name: Set up JDK 17 (Maven)
+        if: ${{ hashFiles('**/pom.xml') != '' && hashFiles('**/build.gradle','**/build.gradle.kts') == '' }}
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: maven
+
+      # --- Spring Boot 3.5.5 일관성 확인 ---
       - name: Enforce Spring Boot ${{ env.BOOT_VERSION }}
         shell: bash
         run: |
           FAILS=()
-
-          # Gradle: build.gradle(.kts) 또는 settings.gradle(.kts)에 명시된 플러그인 버전 검사
           for f in $(git ls-files '**/build.gradle' '**/build.gradle.kts' '**/settings.gradle' '**/settings.gradle.kts'); do
-            # Spring Boot 플러그인 등장하면 3.5.5 문자열 포함 여부 확인
             if grep -q "org.springframework.boot" "$f"; then
-              if ! grep -Eq "3\.5\.5" "$f"; then
-                FAILS+=("$f")
-              fi
+              grep -Eq "3\.5\.5" "$f" || FAILS+=("$f")
             fi
           done
-
-          # Maven: spring-boot 관련 선언이 있는 pom.xml은 3.5.5 포함 여부 확인
           for p in $(git ls-files '**/pom.xml'); do
             if grep -q "spring-boot" "$p"; then
-              if ! grep -q "3.5.5" "$p"; then
-                FAILS+=("$p")
-              fi
+              grep -q "3.5.5" "$p" || FAILS+=("$p")
             fi
           done
-
           if [ ${#FAILS[@]} -gt 0 ]; then
             echo "❌ Spring Boot ${BOOT_VERSION}가 아닌 파일:"
             printf ' - %s\n' "${FAILS[@]}"
-            echo "※ pluginManagement나 버전 카탈로그(versions catalog)로 관리한다면 이 체크를 조정하세요."
             exit 1
           fi
 
-      # --- Gradle 프로젝트 ---
+      # --- Gradle 빌드/테스트 ---
       - name: Build & Test (Gradle)
         if: ${{ hashFiles('**/build.gradle','**/build.gradle.kts') != '' }}
         run: |
           chmod +x ./gradlew || true
           ./gradlew clean build --no-daemon --stacktrace
 
-      # --- Maven 프로젝트 ---
+      # --- Maven 빌드/테스트 ---
       - name: Build & Test (Maven)
         if: ${{ hashFiles('**/pom.xml') != '' && hashFiles('**/build.gradle','**/build.gradle.kts') == '' }}
-        run: |
-          mvn -B -ntp --no-transfer-progress clean verify
+        run: mvn -B -ntp --no-transfer-progress clean verify
 
       # --- Docker (옵션: Dockerfile 있을 때만) ---
       - name: Set up Docker Buildx
         if: ${{ hashFiles('**/Dockerfile') != '' }}
         uses: docker/setup-buildx-action@v3
 
-      - name: Login to Docker Hub
+      - name: Login to GHCR
+        if: ${{ hashFiles('**/Dockerfile') != '' }}
         uses: docker/login-action@v3
         with:
-          username: ${{ secrets.DOCKERHUB_USERNAME }}
-          password: ${{ secrets.DOCKERHUB_TOKEN }}
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Build image (no push for PR / non-main)
-        if: ${{ hashFiles('**/Dockerfile') != '' && github.ref != 'refs/heads/main' && github.event_name != 'push' }}
+        if: ${{ hashFiles('**/Dockerfile') != '' && (github.ref != 'refs/heads/main' || github.event_name == 'pull_request') }}
         uses: docker/build-push-action@v6
         with:
           context: .
@@ -125,7 +114,7 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
-      # --- 산출물/리포트 업로드 ---
+      # --- 산출물 업로드 ---
       - name: Upload JARs
         if: always()
         uses: actions/upload-artifact@v4
@@ -146,7 +135,7 @@ jobs:
             **/build/reports/tests/**
             **/target/surefire-reports/**
             **/target/failsafe-reports/**
-            **/jacoco/** 
+            **/jacoco/**
           if-no-files-found: ignore
 
       - name: Job summary
