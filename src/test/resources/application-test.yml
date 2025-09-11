@@ -37,7 +37,12 @@ spring:
 
 # JWT (테스트 값)
 jwt:
+  key: test-secret-key-for-testing-purposes-only-very-long-key
   secret: test-secret-key-for-testing-purposes-only-very-long-key
+  access:
+    expiration: 900000       # 15분
+  refresh:
+    expiration: 1209600000  # 14일
   access-expiration-ms: 900000       # 15분
   refresh-expiration-ms: 1209600000  # 14일
   verification-expiration-ms: 900000 # 15분
