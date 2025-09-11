@@ -1,0 +1,146 @@
+name: CI (JDK17 / Spring Boot 3.5.5)
+
+on:
+  push:
+    branches: [ "main", "develop" ]
+  pull_request:
+    branches: [ "main", "develop" ]
+
+permissions:
+  contents: read
+  packages: write
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  BOOT_VERSION: "3.5.5"
+
+jobs:
+  build-test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17 (Temurin)
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: | 
+            ${{ hashFiles('**/build.gradle','**/build.gradle.kts') != '' && 'gradle' || '' }}
+            ${{ hashFiles('**/pom.xml') != '' && 'maven' || '' }}
+
+      # --- Spring Boot 3.5.5 일관성 확인 (Gradle/Maven) ---
+      - name: Enforce Spring Boot ${{ env.BOOT_VERSION }}
+        shell: bash
+        run: |
+          FAILS=()
+
+          # Gradle: build.gradle(.kts) 또는 settings.gradle(.kts)에 명시된 플러그인 버전 검사
+          for f in $(git ls-files '**/build.gradle' '**/build.gradle.kts' '**/settings.gradle' '**/settings.gradle.kts'); do
+            # Spring Boot 플러그인 등장하면 3.5.5 문자열 포함 여부 확인
+            if grep -q "org.springframework.boot" "$f"; then
+              if ! grep -Eq "3\.5\.5" "$f"; then
+                FAILS+=("$f")
+              fi
+            fi
+          done
+
+          # Maven: spring-boot 관련 선언이 있는 pom.xml은 3.5.5 포함 여부 확인
+          for p in $(git ls-files '**/pom.xml'); do
+            if grep -q "spring-boot" "$p"; then
+              if ! grep -q "3.5.5" "$p"; then
+                FAILS+=("$p")
+              fi
+            fi
+          done
+
+          if [ ${#FAILS[@]} -gt 0 ]; then
+            echo "❌ Spring Boot ${BOOT_VERSION}가 아닌 파일:"
+            printf ' - %s\n' "${FAILS[@]}"
+            echo "※ pluginManagement나 버전 카탈로그(versions catalog)로 관리한다면 이 체크를 조정하세요."
+            exit 1
+          fi
+
+      # --- Gradle 프로젝트 ---
+      - name: Build & Test (Gradle)
+        if: ${{ hashFiles('**/build.gradle','**/build.gradle.kts') != '' }}
+        run: |
+          chmod +x ./gradlew || true
+          ./gradlew clean build --no-daemon --stacktrace
+
+      # --- Maven 프로젝트 ---
+      - name: Build & Test (Maven)
+        if: ${{ hashFiles('**/pom.xml') != '' && hashFiles('**/build.gradle','**/build.gradle.kts') == '' }}
+        run: |
+          mvn -B -ntp --no-transfer-progress clean verify
+
+      # --- Docker (옵션: Dockerfile 있을 때만) ---
+      - name: Set up Docker Buildx
+        if: ${{ hashFiles('**/Dockerfile') != '' }}
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Build image (no push for PR / non-main)
+        if: ${{ hashFiles('**/Dockerfile') != '' && github.ref != 'refs/heads/main' && github.event_name != 'push' }}
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: false
+          tags: ghcr.io/${{ github.repository }}:${{ github.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Build & Push image (main)
+        if: ${{ hashFiles('**/Dockerfile') != '' && github.ref == 'refs/heads/main' }}
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          tags: |
+            ghcr.io/${{ github.repository }}:latest
+            ghcr.io/${{ github.repository }}:${{ github.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      # --- 산출물/리포트 업로드 ---
+      - name: Upload JARs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-jars
+          path: |
+            **/build/libs/*.jar
+            **/target/*.jar
+          if-no-files-found: ignore
+
+      - name: Upload test reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-reports
+          path: |
+            **/build/test-results/test/**
+            **/build/reports/tests/**
+            **/target/surefire-reports/**
+            **/target/failsafe-reports/**
+            **/jacoco/** 
+          if-no-files-found: ignore
+
+      - name: Job summary
+        if: always()
+        run: |
+          echo "### CI Summary" >> $GITHUB_STEP_SUMMARY
+          echo "- JDK: 17 (Temurin)" >> $GITHUB_STEP_SUMMARY
+          echo "- Spring Boot: ${{ env.BOOT_VERSION }}" >> $GITHUB_STEP_SUMMARY
+          echo "- Ref: ${{ github.ref }}" >> $GITHUB_STEP_SUMMARY
