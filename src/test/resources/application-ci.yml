@@ -1,6 +1,6 @@
 spring:
   profiles:
-    include: test   # test 프로필을 기반으로 하고, 아래 값으로 덮어씀
+    include: test
   mail:
     host: localhost
     port: 2525
