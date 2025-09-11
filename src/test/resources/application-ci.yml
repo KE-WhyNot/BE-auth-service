@@ -1,0 +1,17 @@
+spring:
+  profiles:
+    include: test   # test 프로필을 기반으로 하고, 아래 값으로 덮어씀
+  mail:
+    host: localhost
+    port: 2525
+    username: test
+    password: test
+
+jwt:
+  secret: test-secret
+  access-token:
+    secret: test-at
+    expiration: 3600000
+  refresh-token:
+    secret: test-rt
+    expiration: 1209600000
