@@ -33,6 +33,7 @@ import com.youthfi.auth.domain.auth.domain.service.TokenWhitelistService;
 import com.youthfi.auth.domain.auth.domain.service.UserService;
 import com.youthfi.auth.domain.email.domain.service.EmailVerificationService;
 import com.youthfi.auth.global.exception.RestApiException;
+import com.youthfi.auth.global.exception.code.status.AuthErrorStatus;
 import com.youthfi.auth.global.security.TokenProvider;
 
 import jakarta.servlet.http.HttpServletRequest;
@@ -353,5 +354,180 @@ class UserAuthUseCaseTest {
         verify(tokenProvider, times(1)).getId(validTokenReissueRequest.refreshToken());
         verify(refreshTokenService, times(1)).findByUserId("testuser");
         verify(tokenProvider, never()).createAccessToken(anyString());
+    }
+
+    // ========== Nginx Verify Token 테스트 ==========
+
+    @Test
+    @DisplayName("토큰 검증 성공 - 유효한 액세스 토큰")
+    void verifyToken_Success() {
+        // given
+        String validAccessToken = "valid.access.token";
+        String userId = "testuser";
+        
+        when(tokenProvider.getToken(httpServletRequest)).thenReturn(java.util.Optional.of(validAccessToken));
+        when(tokenProvider.validateToken(validAccessToken)).thenReturn(true);
+        when(tokenProvider.isAccessToken(validAccessToken)).thenReturn(true);
+        when(tokenBlacklistService.isBlacklistToken(validAccessToken)).thenReturn(false);
+        when(tokenProvider.getId(validAccessToken)).thenReturn(java.util.Optional.of(userId));
+        when(userService.findByUserId(userId)).thenReturn(testUser);
+
+        // when
+        String result = userAuthUseCase.verifyToken(httpServletRequest);
+
+        // then
+        assertEquals(userId, result);
+        verify(tokenProvider, times(1)).getToken(httpServletRequest);
+        verify(tokenProvider, times(1)).validateToken(validAccessToken);
+        verify(tokenProvider, times(1)).isAccessToken(validAccessToken);
+        verify(tokenBlacklistService, times(1)).isBlacklistToken(validAccessToken);
+        verify(tokenProvider, times(1)).getId(validAccessToken);
+        verify(userService, times(1)).findByUserId(userId);
+    }
+
+    @Test
+    @DisplayName("토큰 검증 실패 - JWT 토큰이 없음")
+    void verifyToken_EmptyJwt_ThrowsException() {
+        // given
+        when(tokenProvider.getToken(httpServletRequest)).thenReturn(java.util.Optional.empty());
+
+        // when & then
+        RestApiException exception = assertThrows(RestApiException.class, () -> {
+            userAuthUseCase.verifyToken(httpServletRequest);
+        });
+
+        assertEquals("AUTH001", exception.getErrorCode().getCode());
+        verify(tokenProvider, times(1)).getToken(httpServletRequest);
+        verify(tokenProvider, never()).validateToken(anyString());
+        verify(tokenProvider, never()).isAccessToken(anyString());
+        verify(tokenBlacklistService, never()).isBlacklistToken(anyString());
+        verify(tokenProvider, never()).getId(anyString());
+        verify(userService, never()).findByUserId(anyString());
+    }
+
+    @Test
+    @DisplayName("토큰 검증 실패 - 유효하지 않은 토큰")
+    void verifyToken_InvalidToken_ThrowsException() {
+        // given
+        String invalidToken = "invalid.token";
+        
+        when(tokenProvider.getToken(httpServletRequest)).thenReturn(java.util.Optional.of(invalidToken));
+        when(tokenProvider.validateToken(invalidToken)).thenReturn(false);
+
+        // when & then
+        RestApiException exception = assertThrows(RestApiException.class, () -> {
+            userAuthUseCase.verifyToken(httpServletRequest);
+        });
+
+        assertEquals("AUTH006", exception.getErrorCode().getCode());
+        verify(tokenProvider, times(1)).getToken(httpServletRequest);
+        verify(tokenProvider, times(1)).validateToken(invalidToken);
+        verify(tokenProvider, never()).isAccessToken(anyString());
+        verify(tokenBlacklistService, never()).isBlacklistToken(anyString());
+        verify(tokenProvider, never()).getId(anyString());
+        verify(userService, never()).findByUserId(anyString());
+    }
+
+    @Test
+    @DisplayName("토큰 검증 실패 - 액세스 토큰이 아님 (리프레시 토큰)")
+    void verifyToken_NotAccessToken_ThrowsException() {
+        // given
+        String refreshToken = "refresh.token";
+        
+        when(tokenProvider.getToken(httpServletRequest)).thenReturn(java.util.Optional.of(refreshToken));
+        when(tokenProvider.validateToken(refreshToken)).thenReturn(true);
+        when(tokenProvider.isAccessToken(refreshToken)).thenReturn(false);
+
+        // when & then
+        RestApiException exception = assertThrows(RestApiException.class, () -> {
+            userAuthUseCase.verifyToken(httpServletRequest);
+        });
+
+        assertEquals("AUTH006", exception.getErrorCode().getCode());
+        verify(tokenProvider, times(1)).getToken(httpServletRequest);
+        verify(tokenProvider, times(1)).validateToken(refreshToken);
+        verify(tokenProvider, times(1)).isAccessToken(refreshToken);
+        verify(tokenBlacklistService, never()).isBlacklistToken(anyString());
+        verify(tokenProvider, never()).getId(anyString());
+        verify(userService, never()).findByUserId(anyString());
+    }
+
+    @Test
+    @DisplayName("토큰 검증 실패 - 블랙리스트에 등록된 토큰")
+    void verifyToken_BlacklistedToken_ThrowsException() {
+        // given
+        String blacklistedToken = "blacklisted.token";
+        
+        when(tokenProvider.getToken(httpServletRequest)).thenReturn(java.util.Optional.of(blacklistedToken));
+        when(tokenProvider.validateToken(blacklistedToken)).thenReturn(true);
+        when(tokenProvider.isAccessToken(blacklistedToken)).thenReturn(true);
+        when(tokenBlacklistService.isBlacklistToken(blacklistedToken)).thenReturn(true);
+
+        // when & then
+        RestApiException exception = assertThrows(RestApiException.class, () -> {
+            userAuthUseCase.verifyToken(httpServletRequest);
+        });
+
+        assertEquals("AUTH006", exception.getErrorCode().getCode());
+        verify(tokenProvider, times(1)).getToken(httpServletRequest);
+        verify(tokenProvider, times(1)).validateToken(blacklistedToken);
+        verify(tokenProvider, times(1)).isAccessToken(blacklistedToken);
+        verify(tokenBlacklistService, times(1)).isBlacklistToken(blacklistedToken);
+        verify(tokenProvider, never()).getId(anyString());
+        verify(userService, never()).findByUserId(anyString());
+    }
+
+    @Test
+    @DisplayName("토큰 검증 실패 - 토큰에서 사용자 ID 추출 불가")
+    void verifyToken_CannotExtractUserId_ThrowsException() {
+        // given
+        String tokenWithoutUserId = "token.without.userid";
+        
+        when(tokenProvider.getToken(httpServletRequest)).thenReturn(java.util.Optional.of(tokenWithoutUserId));
+        when(tokenProvider.validateToken(tokenWithoutUserId)).thenReturn(true);
+        when(tokenProvider.isAccessToken(tokenWithoutUserId)).thenReturn(true);
+        when(tokenBlacklistService.isBlacklistToken(tokenWithoutUserId)).thenReturn(false);
+        when(tokenProvider.getId(tokenWithoutUserId)).thenReturn(java.util.Optional.empty());
+
+        // when & then
+        RestApiException exception = assertThrows(RestApiException.class, () -> {
+            userAuthUseCase.verifyToken(httpServletRequest);
+        });
+
+        assertEquals("AUTH006", exception.getErrorCode().getCode());
+        verify(tokenProvider, times(1)).getToken(httpServletRequest);
+        verify(tokenProvider, times(1)).validateToken(tokenWithoutUserId);
+        verify(tokenProvider, times(1)).isAccessToken(tokenWithoutUserId);
+        verify(tokenBlacklistService, times(1)).isBlacklistToken(tokenWithoutUserId);
+        verify(tokenProvider, times(1)).getId(tokenWithoutUserId);
+        verify(userService, never()).findByUserId(anyString());
+    }
+
+    @Test
+    @DisplayName("토큰 검증 실패 - 존재하지 않는 사용자")
+    void verifyToken_UserNotFound_ThrowsException() {
+        // given
+        String validToken = "valid.token";
+        String nonExistentUserId = "nonexistent";
+        
+        when(tokenProvider.getToken(httpServletRequest)).thenReturn(java.util.Optional.of(validToken));
+        when(tokenProvider.validateToken(validToken)).thenReturn(true);
+        when(tokenProvider.isAccessToken(validToken)).thenReturn(true);
+        when(tokenBlacklistService.isBlacklistToken(validToken)).thenReturn(false);
+        when(tokenProvider.getId(validToken)).thenReturn(java.util.Optional.of(nonExistentUserId));
+        when(userService.findByUserId(nonExistentUserId)).thenThrow(new RestApiException(AuthErrorStatus.INVALID_ACCESS_TOKEN));
+
+        // when & then
+        RestApiException exception = assertThrows(RestApiException.class, () -> {
+            userAuthUseCase.verifyToken(httpServletRequest);
+        });
+
+        assertEquals("AUTH006", exception.getErrorCode().getCode());
+        verify(tokenProvider, times(1)).getToken(httpServletRequest);
+        verify(tokenProvider, times(1)).validateToken(validToken);
+        verify(tokenProvider, times(1)).isAccessToken(validToken);
+        verify(tokenBlacklistService, times(1)).isBlacklistToken(validToken);
+        verify(tokenProvider, times(1)).getId(validToken);
+        verify(userService, times(1)).findByUserId(nonExistentUserId);
     }
 }
