@@ -141,8 +141,22 @@ jobs:
         run: |
           set -euo pipefail
           cd INFRA
+          
+          # 디버깅: 현재 매니페스트 파일 내용 확인
+          echo "=== Current manifest file ==="
+          cat "$MANIFEST_PATH" || echo "File not found: $MANIFEST_PATH"
+          echo ""
+          
+          # 디버깅: 환경 변수 확인
+          echo "=== Environment variables ==="
+          echo "IMAGE_REPO: $IMAGE_REPO"
+          echo "IMAGE_TAG: $IMAGE_TAG"
+          echo "SERVICE_NAME: $SERVICE_NAME"
+          echo "MANIFEST_PATH: $MANIFEST_PATH"
+          echo ""
       
           # 1) name이 SERVICE_NAME인 컨테이너의 image 교체
+          echo "=== Updating manifest with yq ==="
           yq -i '
             (.. | select(has("containers")).containers[]?
               | select(.name == env(SERVICE_NAME)).image
@@ -155,6 +169,16 @@ jobs:
               | select(.image | test("(^.*/)?(be-)?auth-service:")).image
             ) = (env(IMAGE_REPO) + ":" + env(IMAGE_TAG))
           ' "$MANIFEST_PATH"
+          
+          # 디버깅: 수정된 매니페스트 파일 내용 확인
+          echo "=== Updated manifest file ==="
+          cat "$MANIFEST_PATH"
+          echo ""
+          
+          # 디버깅: git diff 확인
+          echo "=== Git diff ==="
+          git diff || echo "No changes detected"
+          echo ""
       
           # 변경 없으면 정상 종료
           if git diff --quiet; then
