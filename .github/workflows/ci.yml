@@ -132,7 +132,7 @@ jobs:
       
           # 공백/따옴표/레지스트리/접두어(be-) 모두 허용하는 치환
           sed -i -E \
-            "s|(^[[:space:]]*image:[[:space:]]*)(\"|')?(docker.io/[^/]+/)?(be-)?auth-service:[^\"'[:space:]]+(\2)?|\1${IMAGE_REPO}:${IMAGE_TAG}|" \
+            "s|(^[[:space:]]*image:[[:space:]]*)(\"|')?(docker.io/[^/]+/)?(be-)?auth-service:[^\"'[:space:]]+(\"|')?|\1${IMAGE_REPO}:${IMAGE_TAG}|" \
             "$MANIFEST_PATH"
       
           echo "[DEBUG] after:"
