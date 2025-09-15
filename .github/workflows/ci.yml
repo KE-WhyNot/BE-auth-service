@@ -118,7 +118,7 @@ jobs:
         run: |
           # 인프라 레포 클론
           git clone https://github.com/KE-WhyNot/INFRA.git
-          cd youthfi-infrastructure
+          cd INFRA
           
           # 이미지 태그 업데이트
           sed -i "s|image: auth-service:.*|image: docker.io/${{ secrets.dockerhub_username }}/be-auth-service:${{ github.sha }}|g" k8s/auth-service/auth-service.yaml
