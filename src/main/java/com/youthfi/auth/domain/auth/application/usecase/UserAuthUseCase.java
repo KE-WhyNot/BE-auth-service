@@ -32,8 +32,8 @@ import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 
 @Service
-@Transactional
 @RequiredArgsConstructor
+@Transactional
 public class UserAuthUseCase {
 
     private final UserService userService;
@@ -137,5 +137,42 @@ public class UserAuthUseCase {
                 newAccessToken,
                 newRefreshToken
         );
+    }
+
+    /**
+     * Nginx Ingress Controller의 auth-request를 위한 토큰 검증 메서드
+     * HTTP 200: 토큰 유효
+     * HTTP 401/403: 토큰 무효 (예외 발생)
+     * @return 검증된 사용자 ID
+     */
+    @Transactional(readOnly = true)
+    public String verifyToken(HttpServletRequest request) {
+        String accessToken = tokenProvider.getToken(request)
+                .orElseThrow(() -> new RestApiException(EMPTY_JWT));
+
+        // 1. 토큰 유효성 검증
+        if (!tokenProvider.validateToken(accessToken)) {
+            throw new RestApiException(INVALID_ACCESS_TOKEN);
+        }
+
+        // 2. Access Token인지 확인
+        if (!tokenProvider.isAccessToken(accessToken)) {
+            throw new RestApiException(INVALID_ACCESS_TOKEN);
+        }
+
+        // 3. 블랙리스트에 있는지 확인
+        if (tokenBlacklistService.isBlacklistToken(accessToken)) {
+            throw new RestApiException(INVALID_ACCESS_TOKEN);
+        }
+
+        // 4. 사용자 ID 추출 및 사용자 존재 여부 확인
+        String userId = tokenProvider.getId(accessToken)
+                .orElseThrow(() -> new RestApiException(INVALID_ACCESS_TOKEN));
+        
+        // 사용자가 존재하는지 확인 (탈퇴한 사용자의 토큰은 무효)
+        userService.findByUserId(userId);
+        
+        // 모든 검증을 통과하면 사용자 ID 반환
+        return userId;
     }
 }

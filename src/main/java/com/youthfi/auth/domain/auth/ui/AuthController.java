@@ -18,6 +18,7 @@ import com.youthfi.auth.global.swagger.AuthApi;
 
 import io.swagger.v3.oas.annotations.Parameter;
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 
@@ -29,12 +30,14 @@ public class AuthController implements AuthApi {
     private final UserAuthUseCase userAuthUseCase;
 
     @PostMapping("/signup")
+    @Override
     public BaseResponse<Void> signup(@Valid @RequestBody SignUpRequest request) {
         userAuthUseCase.signUp(request);
         return BaseResponse.onSuccess();
     }
 
     @PostMapping("/login")
+    @Override
     public BaseResponse<LoginResponse> login(@Valid @RequestBody LoginRequest request) {
         return BaseResponse.onSuccess(userAuthUseCase.login(request));
     }
@@ -59,5 +62,17 @@ public class AuthController implements AuthApi {
     @Override
     public BaseResponse<TokenReissueResponse> reissueToken(@Valid @RequestBody TokenReissueRequest request) {
         return BaseResponse.onSuccess(userAuthUseCase.reissueToken(request));
+    }
+
+    /**
+     * Nginx Ingress Controller의 auth-request를 위한 토큰 검증 엔드포인트
+     * 이 엔드포인트는 내부 네트워크에서만 접근 가능해야 합니다.
+     */
+    @PostMapping("/verify")
+    public BaseResponse<Void> verifyToken(HttpServletRequest request, HttpServletResponse response) {
+        String userId = userAuthUseCase.verifyToken(request);
+        // 검증된 사용자 ID를 헤더에 추가하여 다운스트림 서비스에서 사용할 수 있도록 함
+        response.setHeader("X-User-Id", userId);
+        return BaseResponse.onSuccess();
     }
 }
