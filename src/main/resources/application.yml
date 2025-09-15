@@ -12,6 +12,10 @@ exclude-auth-path-patterns:
       method: POST
     - path-pattern: /api/auth/login
       method: POST
+    - path-pattern: /api/auth/reissue
+      method: POST
+    - path-pattern: /api/auth/verify
+      method: POST
     - path-pattern: /api/email/**
       method: POST
     - path-pattern: /swagger-ui.html
@@ -34,6 +38,10 @@ exclude-blacklist-path-patterns:
     - path-pattern: /api/auth/signup
       method: POST
     - path-pattern: /api/auth/login
+      method: POST
+    - path-pattern: /api/auth/reissue
+      method: POST
+    - path-pattern: /api/auth/verify
       method: POST
     - path-pattern: /api/email/**
       method: POST
