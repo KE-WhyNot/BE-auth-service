@@ -84,8 +84,12 @@ src/
 - Health Check 엔드포인트
 - Kubernetes Liveness/Readiness Probe
 
-## 🚀 배포 정보
-- **네임스페이스**: default
-- **포트**: 8080
-- **리소스**: CPU 250m-500m, Memory 256Mi-512Mi
-- **헬스체크**: `/actuator/health`
+[//]: # (## 🚀 배포 정보)
+
+[//]: # (- **네임스페이스**: default)
+
+[//]: # (- **포트**: 8080)
+
+[//]: # (- **리소스**: CPU 250m-500m, Memory 256Mi-512Mi)
+
+[//]: # (- **헬스체크**: `/actuator/health`)
