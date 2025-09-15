@@ -116,19 +116,38 @@ jobs:
       # 인프라 레포 업데이트
       - name: Update Infrastructure Repository
         if: ${{ github.ref == 'refs/heads/main' }}
+        env:
+          IMAGE_REPO: docker.io/${{ secrets.dockerhub_username }}/${{ env.IMAGE_NAME }}  # ex) docker.io/yourid/auth-service
+          IMAGE_TAG: ${{ github.sha }}
+          MANIFEST_PATH: k8s/auth-service/auth-service.yaml
         run: |
-          # 인프라 레포 클론
+          set -euo pipefail
+      
+          # (private 레포면 PAT 필요) git clone https://${{ secrets.GH_PAT }}@github.com/KE-WhyNot/INFRA.git
           git clone https://github.com/KE-WhyNot/INFRA.git
           cd INFRA
-          
-          # 이미지 태그 업데이트
-          sed -i "s|image: auth-service:.*|image: docker.io/${{ secrets.dockerhub_username }}/be-auth-service:${{ github.sha }}|g" k8s/auth-service/auth-service.yaml
-          
-          # 변경사항 커밋 및 푸시
+      
+          echo "[DEBUG] before:"
+          grep -nE '^\s*image:' "$MANIFEST_PATH" || true
+      
+          # 공백/따옴표/레지스트리/접두어(be-) 모두 허용하는 치환
+          sed -i -E \
+            "s|(^[[:space:]]*image:[[:space:]]*)(\"|')?(docker.io/[^/]+/)?(be-)?auth-service:[^\"'[:space:]]+(\2)?|\1${IMAGE_REPO}:${IMAGE_TAG}|" \
+            "$MANIFEST_PATH"
+      
+          echo "[DEBUG] after:"
+          grep -nE '^\s*image:' "$MANIFEST_PATH" || true
+      
+          # 변경 없으면 정상 종료(커밋 시 실패 방지)
+          if git diff --quiet; then
+            echo "No changes to commit. Manifest already up to date."
+            exit 0
+          fi
+      
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
-          git add k8s/auth-service/auth-service.yaml
-          git commit -m "Update auth-service image to ${{ github.sha }}"
+          git add "$MANIFEST_PATH"
+          git commit -m "Update ${IMAGE_REPO} to ${IMAGE_TAG}"
           git push
 
       # --- 산출물/리포트 업로드 ---
