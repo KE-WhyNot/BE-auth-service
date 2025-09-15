@@ -122,47 +122,58 @@ jobs:
           ref: main
           token: ${{ secrets.INFRA_PAT }}
           path: INFRA
-
+      
       # yq 설치
       - name: Install yq
+        if: ${{ github.ref == 'refs/heads/main' }}
         run: |
           sudo curl -L https://github.com/mikefarah/yq/releases/download/v4.44.3/yq_linux_amd64 -o /usr/local/bin/yq
           sudo chmod +x /usr/local/bin/yq
       
-      # 매니페스트 수정 + 커밋/푸시
+      # 매니페스트 수정 + 커밋/푸시 (커밋 메시지 정돈)
       - name: Update Infrastructure Repository
         if: ${{ github.ref == 'refs/heads/main' }}
         env:
           IMAGE_REPO: docker.io/${{ secrets.dockerhub_username }}/${{ env.IMAGE_NAME }}
           IMAGE_TAG: ${{ github.sha }}
+          SERVICE_NAME: ${{ env.IMAGE_NAME }}                  # ex) auth-service
           MANIFEST_PATH: k8s/auth-service/auth-service.yaml
         run: |
           set -euo pipefail
           cd INFRA
       
-          # auth-service 컨테이너 image만 업데이트
+          # 1) name이 SERVICE_NAME인 컨테이너의 image 교체
           yq -i '
             (.. | select(has("containers")).containers[]?
-              | select(.name == "auth-service").image
+              | select(.name == env(SERVICE_NAME)).image
             ) = (env(IMAGE_REPO) + ":" + env(IMAGE_TAG))
           ' "$MANIFEST_PATH"
       
-          # (보조) name 없이 image만 있는 경우도 auth-service면 교체
+          # 2) 보조: name 없이 image만 있는 경우에도 auth-service면 교체
           yq -i '
             (.. | select(has("containers")).containers[]?
               | select(.image | test("(^.*/)?(be-)?auth-service:")).image
             ) = (env(IMAGE_REPO) + ":" + env(IMAGE_TAG))
           ' "$MANIFEST_PATH"
       
+          # 변경 없으면 정상 종료
           if git diff --quiet; then
             echo "No changes to commit. Manifest already up to date."
             exit 0
           fi
       
+          # 커밋 메시지 구성
+          SHORT_SHA="${IMAGE_TAG:0:12}"
+          BRANCH="${GITHUB_REF_NAME:-${GITHUB_REF##*/}}"
+          TAG_HINT=$([ "$BRANCH" = "main" ] && echo "latest" || echo "$BRANCH")
+          SUBJECT="chore(${SERVICE_NAME}): bump image to ${SHORT_SHA} (${TAG_HINT})"
+          RUN_URL="https://github.com/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
+          BODY=$'Update container image\n\n- image: '"${IMAGE_REPO}:${IMAGE_TAG}"$'\n- branch: '"${BRANCH}"$'\n- source: '"${RUN_URL}"$'\n'
+      
           git config user.email "action@github.com"
           git config user.name "github-actions[bot]"
           git add "$MANIFEST_PATH"
-          git commit -m "Update ${IMAGE_REPO} to ${IMAGE_TAG}"
+          git commit -m "$SUBJECT" -m "$BODY"
           git push origin HEAD:main
 
       # --- 산출물/리포트 업로드 ---
