@@ -113,57 +113,57 @@ jobs:
             docker.io/${{ secrets.dockerhub_username }}/${{ env.IMAGE_NAME }}:latest
             docker.io/${{ secrets.dockerhub_username }}/${{ env.IMAGE_NAME }}:${{ github.sha }}
 
+      # INFRA 레포를 토큰으로 체크아웃
+      - name: Checkout INFRA
+        if: ${{ github.ref == 'refs/heads/main' }}
+        uses: actions/checkout@v4
+        with:
+          repository: KE-WhyNot/INFRA
+          ref: main
+          token: ${{ secrets.INFRA_PAT }}
+          path: INFRA
+
       # yq 설치
       - name: Install yq
         run: |
           sudo curl -L https://github.com/mikefarah/yq/releases/download/v4.44.3/yq_linux_amd64 -o /usr/local/bin/yq
           sudo chmod +x /usr/local/bin/yq
       
-      # 인프라 레포 업데이트
+      # 매니페스트 수정 + 커밋/푸시
       - name: Update Infrastructure Repository
         if: ${{ github.ref == 'refs/heads/main' }}
         env:
-          IMAGE_REPO: docker.io/${{ secrets.dockerhub_username }}/${{ env.IMAGE_NAME }}   # ex) docker.io/yourid/auth-service
+          IMAGE_REPO: docker.io/${{ secrets.dockerhub_username }}/${{ env.IMAGE_NAME }}
           IMAGE_TAG: ${{ github.sha }}
           MANIFEST_PATH: k8s/auth-service/auth-service.yaml
         run: |
           set -euo pipefail
-      
-          # private이면 PAT 사용:
-          # git clone https://${{ secrets.GH_PAT }}@github.com/KE-WhyNot/INFRA.git
-          git clone https://github.com/KE-WhyNot/INFRA.git
           cd INFRA
       
-          echo "[DEBUG] before:"
-          grep -nE '^[[:space:]]*image:' "$MANIFEST_PATH" || true
-      
-          # 1) 컨테이너 name이 "auth-service"인 경우 그 image만 교체
+          # auth-service 컨테이너 image만 업데이트
           yq -i '
             (.. | select(has("containers")).containers[]?
               | select(.name == "auth-service").image
             ) = (env(IMAGE_REPO) + ":" + env(IMAGE_TAG))
           ' "$MANIFEST_PATH"
       
-          # 2) (보조) name이 없고 image로만 정의된 경우도 레포/접두어 무시하고 auth-service면 교체
+          # (보조) name 없이 image만 있는 경우도 auth-service면 교체
           yq -i '
             (.. | select(has("containers")).containers[]?
               | select(.image | test("(^.*/)?(be-)?auth-service:")).image
             ) = (env(IMAGE_REPO) + ":" + env(IMAGE_TAG))
           ' "$MANIFEST_PATH"
       
-          echo "[DEBUG] after:"
-          grep -nE '^[[:space:]]*image:' "$MANIFEST_PATH" || true
-      
           if git diff --quiet; then
             echo "No changes to commit. Manifest already up to date."
             exit 0
           fi
       
-          git config --local user.email "action@github.com"
-          git config --local user.name "GitHub Action"
+          git config user.email "action@github.com"
+          git config user.name "github-actions[bot]"
           git add "$MANIFEST_PATH"
           git commit -m "Update ${IMAGE_REPO} to ${IMAGE_TAG}"
-          git push
+          git push origin HEAD:main
 
       # --- 산출물/리포트 업로드 ---
       - name: Upload JARs
