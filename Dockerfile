@@ -1,7 +1,7 @@
 # Multi-stage build를 사용한 Spring Boot 애플리케이션 Dockerfile
 
 # 1단계: 빌드 스테이지
-FROM eclipse-temurin:17-jdk-slim AS builder
+FROM eclipse-temurin:17-jdk-jammy AS builder
 
 # 작업 디렉토리 설정
 WORKDIR /app
