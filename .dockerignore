@@ -11,8 +11,11 @@
 
 # Build 관련
 build/
+!build/libs/*.jar
 .gradle/
-gradle/
+gradle/**
+!gradle/wrapper/**
+!gradlew
 
 # 로그 파일
 *.log
