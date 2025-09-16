@@ -130,73 +130,39 @@ jobs:
           sudo curl -L https://github.com/mikefarah/yq/releases/download/v4.44.3/yq_linux_amd64 -o /usr/local/bin/yq
           sudo chmod +x /usr/local/bin/yq
 
-      # 매니페스트 수정 + 커밋/푸시 (커밋 메시지 정돈)
-      - name: Update Infrastructure Repository
+      # Helm values.yaml 업데이트 (기존 K8s 매니페스트 대신)
+      - name: Update Helm Values in Infrastructure Repository
         if: ${{ github.ref == 'refs/heads/main' }}
         env:
           IMAGE_REPO: docker.io/${{ secrets.dockerhub_username }}/${{ env.IMAGE_NAME }}
           IMAGE_TAG: ${{ github.sha }}
           SERVICE_NAME: ${{ env.IMAGE_NAME }}                  # ex) auth-service
-          MANIFEST_PATH: k8s/auth-service/auth-service.yaml
+          HELM_VALUES_PATH: k8s/auth-service/helm/values.yaml
         run: |
           set -euo pipefail
           cd INFRA
           
-          # 디버깅: 현재 매니페스트 파일 내용 확인
-          echo "=== Current manifest file ==="
-          cat "$MANIFEST_PATH" || echo "File not found: $MANIFEST_PATH"
-          echo ""
+          # 1) Helm values.yaml에서 image.repository와 image.tag 업데이트
+          yq -i '.image.repository = env(IMAGE_REPO)' "$HELM_VALUES_PATH"
+          yq -i '.image.tag = env(IMAGE_TAG)' "$HELM_VALUES_PATH"
           
-          # 디버깅: 환경 변수 확인
-          echo "=== Environment variables ==="
-          echo "IMAGE_REPO: $IMAGE_REPO"
-          echo "IMAGE_TAG: $IMAGE_TAG"
-          echo "SERVICE_NAME: $SERVICE_NAME"
-          echo "MANIFEST_PATH: $MANIFEST_PATH"
-          echo ""
-      
-          # 1) name이 SERVICE_NAME인 컨테이너의 image 교체
-          echo "=== Updating manifest with yq ==="
-          yq -i '
-            (.. | select(has("containers")).containers[]?
-              | select(.name == env(SERVICE_NAME)).image
-            ) = (env(IMAGE_REPO) + ":" + env(IMAGE_TAG))
-          ' "$MANIFEST_PATH"
-      
-          # 2) 보조: name 없이 image만 있는 경우에도 auth-service면 교체
-          yq -i '
-            (.. | select(has("containers")).containers[]?
-              | select(.image | test("(^.*/)?(be-)?auth-service:")).image
-            ) = (env(IMAGE_REPO) + ":" + env(IMAGE_TAG))
-          ' "$MANIFEST_PATH"
-          
-          # 디버깅: 수정된 매니페스트 파일 내용 확인
-          echo "=== Updated manifest file ==="
-          cat "$MANIFEST_PATH"
-          echo ""
-          
-          # 디버깅: git diff 확인
-          echo "=== Git diff ==="
-          git diff || echo "No changes detected"
-          echo ""
-      
           # 변경 없으면 정상 종료
           if git diff --quiet; then
-            echo "No changes to commit. Manifest already up to date."
+            echo "No changes to commit. Helm values already up to date."
             exit 0
           fi
-      
+          
           # 커밋 메시지 구성
           SHORT_SHA="${IMAGE_TAG:0:12}"
           BRANCH="${GITHUB_REF_NAME:-${GITHUB_REF##*/}}"
           TAG_HINT=$([ "$BRANCH" = "main" ] && echo "latest" || echo "$BRANCH")
-          SUBJECT="chore(${SERVICE_NAME}): bump image to ${SHORT_SHA} (${TAG_HINT})"
+          SUBJECT="[CHORE] 헬름 이미지 업데이트: ${SERVICE_NAME} → ${SHORT_SHA} (${TAG_HINT})"
           RUN_URL="https://github.com/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
-          BODY=$'Update container image\n\n- image: '"${IMAGE_REPO}:${IMAGE_TAG}"$'\n- branch: '"${BRANCH}"$'\n- source: '"${RUN_URL}"$'\n'
-      
+          BODY=$'헬름 차트 이미지 자동 업데이트\n\n- 이미지: '"${IMAGE_REPO}:${IMAGE_TAG}"$'\n- 브랜치: '"${BRANCH}"$'\n- 소스: '"${RUN_URL}"$'\n- 헬름 경로: '"${HELM_VALUES_PATH}"$'\n'
+          
           git config user.email "action@github.com"
           git config user.name "github-actions[bot]"
-          git add "$MANIFEST_PATH"
+          git add "$HELM_VALUES_PATH"
           git commit -m "$SUBJECT" -m "$BODY"
           git push origin HEAD:main
 
