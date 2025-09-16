@@ -130,6 +130,24 @@ jobs:
           sudo curl -L https://github.com/mikefarah/yq/releases/download/v4.44.3/yq_linux_amd64 -o /usr/local/bin/yq
           sudo chmod +x /usr/local/bin/yq
       
+      # Kubernetes Secret 생성
+      - name: Create Kubernetes Secret
+        if: ${{ github.ref == 'refs/heads/main' }}
+        run: |
+          # auth-service 네임스페이스 생성
+          kubectl create namespace auth-service --dry-run=client -o yaml | kubectl apply -f -
+          
+          # JWT 시크릿 생성 (GitHub Secrets에서 가져옴)
+          kubectl create secret generic auth-secrets \
+            --from-literal=jwt.secret="${{ secrets.JWT_SECRET }}" \
+            --from-literal=db.password="${{ secrets.DB_PASSWORD }}" \
+            --from-literal=db.username="${{ secrets.DB_USERNAME }}" \
+            --from-literal=db.url="${{ secrets.DB_URL }}" \
+            -n auth-service \
+            --dry-run=client -o yaml | kubectl apply -f -
+          
+          echo "✅ Kubernetes secrets created successfully"
+
       # 매니페스트 수정 + 커밋/푸시 (커밋 메시지 정돈)
       - name: Update Infrastructure Repository
         if: ${{ github.ref == 'refs/heads/main' }}
