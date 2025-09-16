@@ -1,6 +1,7 @@
 package com.youthfi.auth.domain.auth.ui;
 
 import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -8,9 +9,11 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.youthfi.auth.domain.auth.application.dto.request.LoginRequest;
 import com.youthfi.auth.domain.auth.application.dto.request.SignUpRequest;
+import com.youthfi.auth.domain.auth.application.dto.request.SocialCodeRequest;
 import com.youthfi.auth.domain.auth.application.dto.request.TokenReissueRequest;
 import com.youthfi.auth.domain.auth.application.dto.response.LoginResponse;
 import com.youthfi.auth.domain.auth.application.dto.response.TokenReissueResponse;
+import com.youthfi.auth.domain.auth.application.usecase.SocialAuthUseCase;
 import com.youthfi.auth.domain.auth.application.usecase.UserAuthUseCase;
 import com.youthfi.auth.global.annotation.CurrentUser;
 import com.youthfi.auth.global.common.BaseResponse;
@@ -28,6 +31,7 @@ import lombok.RequiredArgsConstructor;
 public class AuthController implements AuthApi {
 
     private final UserAuthUseCase userAuthUseCase;
+    private final SocialAuthUseCase socialAuthUseCase;
 
     @PostMapping("/signup")
     @Override
@@ -65,14 +69,19 @@ public class AuthController implements AuthApi {
     }
 
     /**
-     * Nginx Ingress Controller의 auth-request를 위한 토큰 검증 엔드포인트
-     * 이 엔드포인트는 내부 네트워크에서만 접근 가능해야 합니다.
+     * Nginx Ingress Controller의 auth-request를 위한 토큰 검증 엔드포인트 (사용할지 사용 안할지 모르겠음)
      */
     @PostMapping("/verify")
     public BaseResponse<Void> verifyToken(HttpServletRequest request, HttpServletResponse response) {
-        String userId = userAuthUseCase.verifyToken(request);
-        // 검증된 사용자 ID를 헤더에 추가하여 다운스트림 서비스에서 사용할 수 있도록 함
-        response.setHeader("X-User-Id", userId);
+        userAuthUseCase.verifyToken(request);
         return BaseResponse.onSuccess();
+    }
+
+    /** provider path variable 버전 */
+    @PostMapping("/login/{provider}")
+    public BaseResponse<LoginResponse> socialLoginByPath(@PathVariable String provider,
+                                                         @Valid @RequestBody SocialCodeRequest request) {
+        LoginResponse response = socialAuthUseCase.signInOrSignUp(provider, request.code());
+        return BaseResponse.onSuccess(response);
     }
 }
