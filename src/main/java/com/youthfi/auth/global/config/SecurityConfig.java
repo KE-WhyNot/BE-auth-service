@@ -1,13 +1,8 @@
 package com.youthfi.auth.global.config;
 
-import com.youthfi.auth.domain.auth.domain.service.RefreshTokenService;
-import com.youthfi.auth.domain.auth.domain.service.TokenWhitelistService;
-import com.youthfi.auth.global.config.properties.CorsProperties;
-import com.youthfi.auth.global.security.ExcludeAuthPathProperties;
-import com.youthfi.auth.global.security.JwtAuthenticationFilter;
-import com.youthfi.auth.global.security.TokenProvider;
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
+import java.util.Arrays;
+
+import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
@@ -24,12 +19,23 @@ import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.CorsUtils;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
-import java.util.Arrays;
+import com.youthfi.auth.domain.auth.domain.service.RefreshTokenService;
+import com.youthfi.auth.domain.auth.domain.service.TokenWhitelistService;
+import com.youthfi.auth.global.config.properties.CorsProperties;
+import com.youthfi.auth.global.config.properties.OAuthClientProperties;
+import com.youthfi.auth.global.config.properties.OAuthProviderProperties;
+import com.youthfi.auth.global.security.ExcludeAuthPathProperties;
+import com.youthfi.auth.global.security.JwtAuthenticationFilter;
+import com.youthfi.auth.global.security.TokenProvider;
+
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
 @Configuration
 @EnableWebSecurity
 @RequiredArgsConstructor
+@EnableConfigurationProperties({OAuthProviderProperties.class, OAuthClientProperties.class})
 public class SecurityConfig {
 
     private final TokenProvider tokenProvider;
