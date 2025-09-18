@@ -2,10 +2,12 @@ package com.youthfi.auth.global.swagger;
 
 import com.youthfi.auth.domain.auth.application.dto.request.LoginRequest;
 import com.youthfi.auth.domain.auth.application.dto.request.SignUpRequest;
+import com.youthfi.auth.domain.auth.application.dto.request.SocialLoginRequest;
 import com.youthfi.auth.domain.auth.application.dto.request.TokenReissueRequest;
 import com.youthfi.auth.domain.auth.application.dto.response.LoginResponse;
 import com.youthfi.auth.domain.auth.application.dto.response.TokenReissueResponse;
 import com.youthfi.auth.global.common.BaseResponse;
+
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
@@ -96,4 +98,22 @@ public interface AuthApi extends BaseApi {
             )
     })
     BaseResponse<TokenReissueResponse> reissueToken(TokenReissueRequest request);
+
+    @Operation(
+            summary = "소셜 로그인",
+            description = "프론트엔드에서 OAuth2 콜백으로 받은 authorization code를 사용하여 소셜 로그인/회원가입을 처리합니다. provider: google|naver|kakao"
+    )
+    @ApiResponses(value = {
+            @ApiResponse(
+                    responseCode = "200",
+                    description = "소셜 로그인 성공",
+                    content = @Content(schema = @Schema(implementation = LoginResponse.class))
+            ),
+            @ApiResponse(
+                    responseCode = "400",
+                    description = "유효하지 않은 요청 또는 미지원 공급자",
+                    content = @Content(schema = @Schema(implementation = BaseResponse.class))
+            )
+    })
+    BaseResponse<LoginResponse> socialLogin(String provider, SocialLoginRequest request);
 }

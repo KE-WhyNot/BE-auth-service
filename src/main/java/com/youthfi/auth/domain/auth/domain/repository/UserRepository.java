@@ -1,11 +1,13 @@
 package com.youthfi.auth.domain.auth.domain.repository;
 
-import com.youthfi.auth.domain.auth.domain.entity.User;
+import java.util.Optional;
+
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
-import java.util.Optional;
+import com.youthfi.auth.domain.auth.domain.entity.SocialProvider;
+import com.youthfi.auth.domain.auth.domain.entity.User;
 
 public interface UserRepository extends JpaRepository<User, String> {
 
@@ -20,4 +22,8 @@ public interface UserRepository extends JpaRepository<User, String> {
 
     @Query("select u from User u where u.userId = :userId")
     Optional<User> findByUserId(@Param("userId") String userId);
+
+    @Query("select u from User u where u.socialProvider = :provider and u.providerUserId = :providerUserId")
+    Optional<User> findBySocialProviderAndProviderUserId(@Param("provider") SocialProvider provider,
+                                                         @Param("providerUserId") String providerUserId);
 }
