@@ -2,7 +2,7 @@ package com.youthfi.auth.global.swagger;
 
 import com.youthfi.auth.domain.auth.application.dto.request.LoginRequest;
 import com.youthfi.auth.domain.auth.application.dto.request.SignUpRequest;
-import com.youthfi.auth.domain.auth.application.dto.request.SocialCodeRequest;
+import com.youthfi.auth.domain.auth.application.dto.request.SocialLoginRequest;
 import com.youthfi.auth.domain.auth.application.dto.request.TokenReissueRequest;
 import com.youthfi.auth.domain.auth.application.dto.response.LoginResponse;
 import com.youthfi.auth.domain.auth.application.dto.response.TokenReissueResponse;
@@ -100,8 +100,8 @@ public interface AuthApi extends BaseApi {
     BaseResponse<TokenReissueResponse> reissueToken(TokenReissueRequest request);
 
     @Operation(
-            summary = "소셜 로그인 (경로 변수)",
-            description = "OAuth2 authorization code를 전달하여 소셜 로그인/회원가입을 처리합니다. provider: google|naver|kakao"
+            summary = "소셜 로그인",
+            description = "프론트엔드에서 OAuth2 콜백으로 받은 authorization code를 사용하여 소셜 로그인/회원가입을 처리합니다. provider: google|naver|kakao"
     )
     @ApiResponses(value = {
             @ApiResponse(
@@ -115,5 +115,5 @@ public interface AuthApi extends BaseApi {
                     content = @Content(schema = @Schema(implementation = BaseResponse.class))
             )
     })
-    BaseResponse<LoginResponse> socialLoginByPath(String provider, SocialCodeRequest request);
+    BaseResponse<LoginResponse> socialLogin(String provider, SocialLoginRequest request);
 }

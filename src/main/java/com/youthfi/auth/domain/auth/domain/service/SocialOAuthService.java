@@ -23,7 +23,9 @@ import com.youthfi.auth.global.exception.code.status.AuthErrorStatus;
 import com.youthfi.auth.global.security.TokenProvider;
 
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class SocialOAuthService {
@@ -208,6 +210,7 @@ public class SocialOAuthService {
         }
         return userRepository.save(toCreate);
     }
+
 }
 
 

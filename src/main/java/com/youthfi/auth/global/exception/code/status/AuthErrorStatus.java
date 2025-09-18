@@ -27,7 +27,8 @@ public enum AuthErrorStatus implements BaseCodeInterface {
     // Social Login
     SOCIAL_TOKEN_EXCHANGE_FAILED(HttpStatus.BAD_GATEWAY, "AUTH011", "소셜 토큰 교환에 실패했습니다."),
     SOCIAL_USERINFO_FAILED(HttpStatus.BAD_GATEWAY, "AUTH012", "소셜 사용자 정보 조회에 실패했습니다."),
-    SOCIAL_UNSUPPORTED_PROVIDER(HttpStatus.BAD_REQUEST, "AUTH013", "지원하지 않는 소셜 공급자입니다.");
+    SOCIAL_UNSUPPORTED_PROVIDER(HttpStatus.BAD_REQUEST, "AUTH013", "지원하지 않는 소셜 공급자입니다."),
+    OAUTH2_AUTHENTICATION_FAILED(HttpStatus.BAD_REQUEST, "AUTH014", "OAuth2 인증에 실패했습니다.");
 
     private final HttpStatus httpStatus;
     private final boolean isSuccess = false;

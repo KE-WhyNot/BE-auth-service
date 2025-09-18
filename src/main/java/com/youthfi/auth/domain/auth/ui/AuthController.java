@@ -9,7 +9,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.youthfi.auth.domain.auth.application.dto.request.LoginRequest;
 import com.youthfi.auth.domain.auth.application.dto.request.SignUpRequest;
-import com.youthfi.auth.domain.auth.application.dto.request.SocialCodeRequest;
+import com.youthfi.auth.domain.auth.application.dto.request.SocialLoginRequest;
 import com.youthfi.auth.domain.auth.application.dto.request.TokenReissueRequest;
 import com.youthfi.auth.domain.auth.application.dto.response.LoginResponse;
 import com.youthfi.auth.domain.auth.application.dto.response.TokenReissueResponse;
@@ -77,10 +77,14 @@ public class AuthController implements AuthApi {
         return BaseResponse.onSuccess();
     }
 
-    /** provider path variable 버전 */
+    /**
+     * 소셜 로그인
+     * 프론트엔드에서 OAuth2 콜백으로 받은 authorization code를 사용하여 로그인/회원가입 처리
+     */
     @PostMapping("/login/{provider}")
-    public BaseResponse<LoginResponse> socialLoginByPath(@PathVariable String provider,
-                                                         @Valid @RequestBody SocialCodeRequest request) {
+    @Override
+    public BaseResponse<LoginResponse> socialLogin(@PathVariable String provider,
+                                                   @Valid @RequestBody SocialLoginRequest request) {
         LoginResponse response = socialAuthUseCase.signInOrSignUp(provider, request.code());
         return BaseResponse.onSuccess(response);
     }
