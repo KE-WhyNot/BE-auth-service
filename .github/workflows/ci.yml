@@ -48,7 +48,7 @@ jobs:
           java-version: '17'
           cache: maven
 
-      # --- Spring Boot 3.5.5 일관성 확인(원하면 유지, 아니면 이 스텝 제거) ---
+      # --- Spring Boot 3.5.5 일관성 확인 ---
       - name: Enforce Spring Boot ${{ env.BOOT_VERSION }}
         shell: bash
         run: |
@@ -90,8 +90,8 @@ jobs:
         if: ${{ hashFiles('**/Dockerfile') != '' }}
         uses: docker/login-action@v3
         with:
-          username: ${{ secrets.dockerhub_username }}   # <- 네가 만든 소문자 시크릿명
-          password: ${{ secrets.dockerhub_token }}
+          username: ${{ secrets.dockerhub_username }} # 레포 별 수정 필요
+          password: ${{ secrets.dockerhub_token }} # 레포 별 수정 필요
 
       - name: Build & Push image (develop)
         if: ${{ hashFiles('**/Dockerfile') != '' && github.ref == 'refs/heads/develop' }}
