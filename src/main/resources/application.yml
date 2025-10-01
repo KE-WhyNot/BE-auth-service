@@ -69,7 +69,7 @@ exclude-blacklist-path-patterns:
       method: OPTIONS
 
 cors:
-  allowed-origins: "http://localhost:5173,http://localhost:3000"
+  allowed-origins: "http://localhost:5173,http://localhost:3000,https://youth-fi.com,https://auth.youth-fi.com"
   allowed-methods: "GET,POST,PUT,PATCH,DELETE,OPTIONS"
   allowed-headers: "Authorization,Content-Type,Accept"
   max-age: 3600
