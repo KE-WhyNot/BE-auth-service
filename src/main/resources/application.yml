@@ -69,9 +69,9 @@ exclude-blacklist-path-patterns:
       method: OPTIONS
 
 cors:
-  allowed-origins: "http://localhost:5173,http://localhost:3000,https://youth-fi.com,https://auth.youth-fi.com"
+  allowed-origins: "http://localhost:5173,http://localhost:3000,https://youth-fi.com,https://auth.youth-fi.com,https://auth.youth-fi.com/swagger-ui"
   allowed-methods: "GET,POST,PUT,PATCH,DELETE,OPTIONS"
-  allowed-headers: "Authorization,Content-Type,Accept"
+  allowed-headers: "Authorization,Content-Type,Accept,Origin,X-Requested-With"
   max-age: 3600
 
 # Swagger
@@ -83,6 +83,8 @@ springdoc:
     tags-sorter: alpha # 태그를 알파벳 순으로 정렬
     operations-sorter: method # delete - get - patch - post - put 순으로 정렬
     enabled: true
+    try-it-out-enabled: true
+    display-request-duration: true
   paths-to-match:
     - /api/**
 
