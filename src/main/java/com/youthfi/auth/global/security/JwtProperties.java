@@ -14,11 +14,27 @@ public class JwtProperties {
     private String key;
 
     @Value("${jwt.access.expiration}")
-    private Long accessTokenExpirationPeriodDay;
+    private Long accessTokenExpirationMs;
 
     @Value("${jwt.refresh.expiration}")
-    private Long refreshTokenExpirationPeriodDay;
+    private Long refreshTokenExpirationMs;
 
     @Value("${jwt.verification-expiration-ms:900000}") // 15분 기본값
     private Long verificationExpirationMs;
+    
+    public String getKey() {
+        return key;
+    }
+    
+    public Long getAccessTokenExpirationMs() {
+        return accessTokenExpirationMs;
+    }
+    
+    public Long getRefreshTokenExpirationMs() {
+        return refreshTokenExpirationMs;
+    }
+    
+    public Long getVerificationExpirationMs() {
+        return verificationExpirationMs;
+    }
 }
