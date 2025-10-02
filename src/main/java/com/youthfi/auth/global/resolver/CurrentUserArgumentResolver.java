@@ -1,17 +1,18 @@
 package com.youthfi.auth.global.resolver;
 
-import com.youthfi.auth.global.annotation.CurrentUser;
-import com.youthfi.auth.global.exception.RestApiException;
-import com.youthfi.auth.global.security.TokenProvider;
-import jakarta.servlet.http.HttpServletRequest;
-import lombok.RequiredArgsConstructor;
 import org.springframework.core.MethodParameter;
 import org.springframework.web.bind.support.WebDataBinderFactory;
 import org.springframework.web.context.request.NativeWebRequest;
 import org.springframework.web.method.support.HandlerMethodArgumentResolver;
 import org.springframework.web.method.support.ModelAndViewContainer;
 
+import com.youthfi.auth.global.annotation.CurrentUser;
+import com.youthfi.auth.global.exception.RestApiException;
 import static com.youthfi.auth.global.exception.code.status.GlobalErrorStatus._UNAUTHORIZED;
+import com.youthfi.auth.global.security.TokenProvider;
+
+import jakarta.servlet.http.HttpServletRequest;
+import lombok.RequiredArgsConstructor;
 
 @RequiredArgsConstructor
 public class CurrentUserArgumentResolver implements HandlerMethodArgumentResolver {
@@ -41,6 +42,16 @@ public class CurrentUserArgumentResolver implements HandlerMethodArgumentResolve
                 .orElseThrow(() -> {
                     return new RestApiException(_UNAUTHORIZED);
                 });
+
+        // 토큰 유효성 검증 추가
+        if (!tokenProvider.validateToken(token)) {
+            throw new RestApiException(_UNAUTHORIZED);
+        }
+
+        // Access Token인지 확인
+        if (!tokenProvider.isAccessToken(token)) {
+            throw new RestApiException(_UNAUTHORIZED);
+        }
 
         String userId = tokenProvider.getId(token)
                 .orElseThrow(() -> {
