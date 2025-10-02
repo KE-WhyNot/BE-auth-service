@@ -66,7 +66,8 @@ public class SecurityConfig {
                         "/swagger-ui/**",
                         "/v3/api-docs/**",
                         "/swagger-ui.html",
-                        "/webjars/**"
+                        "/webjars/**",
+                        "/swagger-resources/**"
                 ).permitAll()
                 .requestMatchers(
                         "/actuator/**",
@@ -104,6 +105,10 @@ public class SecurityConfig {
         config.setAllowCredentials(true);
         // pre-flight 캐시 시간 (초)
         config.setMaxAge(corsProperties.getMaxAge());
+        
+        // Swagger UI를 위한 추가 설정
+        config.addExposedHeader("X-User-Id");
+        config.addExposedHeader("Authorization");
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         // 모든 경로에 대해 위 정책을 적용

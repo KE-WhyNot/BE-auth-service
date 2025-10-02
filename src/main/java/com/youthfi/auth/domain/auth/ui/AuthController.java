@@ -73,7 +73,8 @@ public class AuthController implements AuthApi {
      */
     @PostMapping("/verify")
     public BaseResponse<Void> verifyToken(HttpServletRequest request, HttpServletResponse response) {
-        userAuthUseCase.verifyToken(request);
+        String userId = userAuthUseCase.verifyToken(request);
+        response.setHeader("X-User-Id", userId);
         return BaseResponse.onSuccess();
     }
 
