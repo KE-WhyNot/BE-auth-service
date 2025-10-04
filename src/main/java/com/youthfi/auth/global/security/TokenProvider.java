@@ -3,8 +3,6 @@ package com.youthfi.auth.global.security;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.time.Instant;
-import java.time.LocalDateTime;
-import java.time.ZoneId;
 import java.util.Collections;
 import java.util.Date;
 import java.util.Optional;
@@ -44,12 +42,7 @@ public class TokenProvider {
         return Jwts.builder()
                 .setHeaderParam(Header.TYPE, Header.JWT_TYPE)
                 .setIssuedAt(now)
-                .setExpiration(Date.from(
-                        LocalDateTime.now()
-                                .plus(Duration.ofMillis(jwtProperties.getAccessTokenExpirationMs()))
-                                .atZone(ZoneId.of("Asia/Seoul"))
-                                .toInstant()
-                ))
+                .setExpiration(new Date(System.currentTimeMillis() + jwtProperties.getAccessTokenExpirationMs()))
                 .setSubject(ACCESS_TOKEN_SUBJECT)
                 .claim(ID_CLAIM, id)
                 .signWith(Keys.hmacShaKeyFor(jwtProperties.getKey().getBytes(StandardCharsets.UTF_8)), SignatureAlgorithm.HS256)
@@ -61,12 +54,7 @@ public class TokenProvider {
         return Jwts.builder()
                 .setHeaderParam(Header.TYPE, Header.JWT_TYPE)
                 .setIssuedAt(now)
-                .setExpiration(Date.from(
-                        LocalDateTime.now()
-                                .plus(Duration.ofMillis(jwtProperties.getRefreshTokenExpirationMs()))
-                                .atZone(ZoneId.of("Asia/Seoul"))
-                                .toInstant()
-                ))
+                .setExpiration(new Date(System.currentTimeMillis() + jwtProperties.getRefreshTokenExpirationMs()))
                 .setSubject(REFRESH_TOKEN_SUBJECT)
                 .claim(ID_CLAIM, id)
                 .signWith(Keys.hmacShaKeyFor(jwtProperties.getKey().getBytes(StandardCharsets.UTF_8)), SignatureAlgorithm.HS256)
@@ -146,12 +134,7 @@ public class TokenProvider {
         return Jwts.builder()
                 .setHeaderParam(Header.TYPE, Header.JWT_TYPE)
                 .setIssuedAt(now)
-                .setExpiration(Date.from(
-                        LocalDateTime.now()
-                                .plus(Duration.ofMillis(jwtProperties.getVerificationExpirationMs()))
-                                .atZone(ZoneId.of("Asia/Seoul"))
-                                .toInstant()
-                ))
+                .setExpiration(new Date(System.currentTimeMillis() + jwtProperties.getVerificationExpirationMs()))
                 .setSubject(EMAIL_VERIFICATION_SUBJECT)
                 .claim(ID_CLAIM, email)  // 이메일을 ID 클레임에 저장
                 .claim(TYPE_CLAIM, type)  // 토큰 타입 저장
